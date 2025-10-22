@@ -18,13 +18,13 @@ Configuration:
 
 import sys
 import yaml
+import json
 from pathlib import Path
 from typing import Dict, Any
+from datetime import datetime
 
-# NOTE: These imports will be created by Claude Code
-# from core.orchestrator import BusinessContextOrchestrator
-# from core.state_manager import ResearchStateManager
-# from utils.logger import setup_logger
+from core.orchestrator import BusinessContextOrchestrator
+from utils.logger import setup_logger, get_default_log_file
 
 
 def load_config() -> Dict[str, Any]:
@@ -112,72 +112,79 @@ def main():
     company_name = config['company']['name']
     print(f"🎯 Target Company: {company_name}")
     print()
-    
-    # TODO: Claude Code will implement these classes
+
     # Initialize orchestrator
-    # logger = setup_logger()
-    # orchestrator = BusinessContextOrchestrator(config)
-    # state_manager = ResearchStateManager(company_name)
-    
-    print("=" * 60)
-    print("📊 PHASE 1: Building Business Context OS")
-    print("=" * 60)
+    debug = config.get('advanced', {}).get('debug', False)
+    log_file = get_default_log_file() if debug else None
+
+    logger = setup_logger(__name__, debug=debug, log_file=log_file)
+
+    if log_file:
+        print(f"📝 Debug logging enabled: {log_file}")
+        print()
+
+    print("🔧 Initializing orchestrator...")
+    orchestrator = BusinessContextOrchestrator(config)
     print()
-    print("Tasks:")
-    print("  1. Gather company intelligence")
-    print("  2. Build Business Model Canvas")
-    print("  3. Map Value Chain")
-    print("  4. Analyze organizational structure")
-    print("  5. Research market landscape")
-    print("  6. Profile competitors")
-    print()
-    
-    # TODO: Execute Phase 1
-    # context = orchestrator.execute_phase1_foundation(
-    #     company_name=company_name,
-    #     depth=config['scope']['phase1_depth']
-    # )
-    # state_manager.save_context(context)
-    # print("✅ Phase 1 Complete: Business context established")
-    
-    print("=" * 60)
-    print("🎯 PHASE 2: Executing Strategy Engine")
-    print("=" * 60)
-    print()
-    print("Applying frameworks:")
-    frameworks = config['scope'].get('phase2_frameworks', [])
-    for framework in frameworks:
-        print(f"  - {framework}")
-    print()
-    
-    # TODO: Execute Phase 2
-    # strategy = orchestrator.execute_phase2_strategy(
-    #     context=context,
-    #     goals=config['goals'],
-    #     frameworks=config['scope']['phase2_frameworks'],
-    #     competitors=config.get('competitors', []),
-    #     prospects=config.get('target_prospects', [])
-    # )
-    # state_manager.save_strategy(strategy)
-    # print("✅ Phase 2 Complete: Strategy analysis finished")
-    
-    print("=" * 60)
-    print("📄 Generating Reports")
-    print("=" * 60)
-    print()
-    
-    # TODO: Generate reports
-    # reports = orchestrator.generate_reports(
-    #     context=context,
-    #     strategy=strategy,
-    #     output_config=config['output']
-    # )
-    
-    print("✨ Analysis Complete!")
-    print(f"📁 Reports will be saved to: outputs/{company_name}/")
-    print()
-    print("TODO: Implementation needed by Claude Code")
-    print("This is a starter template - see ARCHITECTURE.md for details")
+
+    try:
+        # Execute the full analysis
+        results = orchestrator.run()
+
+        # Check for errors
+        if 'error' in results:
+            print(f"\n❌ Error during execution: {results['error']}")
+            return 1
+
+        # Save results to JSON
+        output_dir = Path(f"outputs/{company_name}")
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        results_file = output_dir / f"analysis_{timestamp}.json"
+
+        with open(results_file, 'w') as f:
+            json.dump(results, f, indent=2, default=str)
+
+        print()
+        print("=" * 60)
+        print("✨ Analysis Complete!")
+        print("=" * 60)
+        print()
+        print(f"📁 Results saved to: {results_file}")
+        print()
+
+        # Print summary
+        summary = results.get('summary', {})
+        print("Summary:")
+        print(f"  Company: {summary.get('company', company_name)}")
+        print(f"  Phase: {summary.get('current_phase', 'complete')}")
+
+        tasks = summary.get('tasks', {})
+        if tasks:
+            print(f"  Total Tasks: {tasks.get('total', 0)}")
+            print(f"  Completed: {tasks.get('completed', 0)}")
+            print(f"  Failed: {tasks.get('failed', 0)}")
+
+        print()
+
+        # Save state for potential recovery
+        state_file = output_dir / f"state_{timestamp}.json"
+        orchestrator.save_state(str(state_file))
+        print(f"💾 State saved to: {state_file}")
+        print()
+
+        return 0
+
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Execution interrupted by user")
+        print("State can be recovered from outputs/")
+        return 130
+
+    except Exception as e:
+        print(f"\n❌ Fatal error: {e}")
+        logger.error(f"Fatal error in main: {e}", exc_info=True)
+        return 1
     
     return 0
 
