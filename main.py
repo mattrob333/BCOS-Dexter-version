@@ -25,6 +25,7 @@ from datetime import datetime
 
 from core.orchestrator import BusinessContextOrchestrator
 from utils.logger import setup_logger, get_default_log_file
+from reports.markdown_report import generate_markdown_report
 
 
 def load_config() -> Dict[str, Any]:
@@ -172,6 +173,22 @@ def main():
         state_file = output_dir / f"state_{timestamp}.json"
         orchestrator.save_state(str(state_file))
         print(f"💾 State saved to: {state_file}")
+        print()
+
+        # Generate markdown report
+        print("📄 Generating reports...")
+        report_file = output_dir / f"report_{timestamp}.md"
+        try:
+            generate_markdown_report(results, str(report_file))
+            print(f"📄 Markdown report: {report_file}")
+        except Exception as e:
+            logger.warning(f"Error generating markdown report: {e}")
+            print(f"⚠️  Warning: Could not generate markdown report")
+
+        print()
+        print("=" * 60)
+        print("✅ All outputs generated successfully!")
+        print("=" * 60)
         print()
 
         return 0
