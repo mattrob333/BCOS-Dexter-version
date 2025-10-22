@@ -1,0 +1,114 @@
+# Business Context OS Configuration
+# Edit this file to customize your business research
+
+# ============================================
+# Target Company
+# ============================================
+company:
+  name: "Stripe"
+  website: "https://stripe.com"
+  industry: "Financial Technology"
+
+# ============================================
+# Research Goals
+# ============================================
+goals:
+  # Primary research objective
+  primary: "Identify growth opportunities in enterprise segment"
+  
+  # Secondary objectives
+  secondary:
+    - "Analyze competitive positioning vs Square and Adyen"
+    - "Develop sales strategy for Fortune 500 companies"
+    - "Identify potential strategic partnerships"
+
+# ============================================
+# Analysis Scope
+# ============================================
+scope:
+  # Phase 1 depth: basic | standard | comprehensive
+  phase1_depth: "comprehensive"
+  
+  # Strategic frameworks to apply in Phase 2
+  phase2_frameworks:
+    - "SWOT"
+    - "Porter's Five Forces"
+    - "Business Model Canvas"
+    - "Value Chain Analysis"
+    - "Blue Ocean Strategy"
+    - "PESTEL"
+    - "BCG Matrix"
+
+# ============================================
+# Competitive Analysis
+# ============================================
+competitors:
+  - "Square"
+  - "Adyen"
+  - "PayPal"
+  - "Braintree"
+
+# ============================================
+# Sales Intelligence (Optional)
+# ============================================
+target_prospects:
+  - company: "Walmart"
+    goal: "Understand payment infrastructure needs and pain points"
+  - company: "Amazon"
+    goal: "Identify partnership opportunities in logistics payments"
+
+# ============================================
+# Performance Targets (Optional)
+# ============================================
+performance_targets:
+  revenue_growth: "40% YoY"
+  market_share: "Top 3 in enterprise segment"
+  customer_acquisition: "500 enterprise clients in 18 months"
+  customer_retention: "95%+ annual retention rate"
+
+# ============================================
+# Data Sources
+# API keys should be in .env file
+# ============================================
+data_sources:
+  firecrawl: true      # Deep website scraping
+  exa: true            # Semantic search
+  twitter: true        # Social signals
+  crunchbase: true     # Company data
+  sec_filings: true    # Public company data
+  news_apis: true      # Recent news
+
+# ============================================
+# Output Preferences
+# ============================================
+output:
+  # Output formats: pdf, docx, json, pptx
+  formats: ["pdf", "docx", "pptx", "json"]
+  
+  # Detail level: executive | detailed | comprehensive
+  detail_level: "executive"
+  
+  # Include charts and visualizations
+  include_visualizations: true
+  
+  # Generate PowerPoint presentation
+  generate_presentation: true
+  
+  # Include appendix with raw data
+  include_appendix: false
+
+# ============================================
+# Advanced Options (Optional)
+# ============================================
+advanced:
+  # Max research steps (safety limit)
+  max_steps: 50
+  
+  # Max steps per task
+  max_steps_per_task: 10
+  
+  # Enable debug logging
+  debug: false
+  
+  # Cache results for faster re-runs
+  enable_cache: true
