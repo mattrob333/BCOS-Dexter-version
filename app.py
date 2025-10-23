@@ -506,8 +506,8 @@ def run_analysis(
 
             # Save JSON
             json_file = session_dir / "analysis.json"
-            with open(json_file, 'w') as f:
-                json.dump(results, f, indent=2, default=str)
+            with open(json_file, 'w', encoding='utf-8') as f:
+                json.dump(results, f, indent=2, default=str, ensure_ascii=False)
             session_manager.add_output_file(session_id, company_slug, 'json', str(json_file))
 
             # Save Markdown - use appropriate report generator based on analysis type
@@ -587,7 +587,7 @@ def display_results(results: dict, session: dict, session_dir: Path):
     with col1:
         json_file = session_dir / "analysis.json"
         if json_file.exists():
-            with open(json_file, 'r') as f:
+            with open(json_file, 'r', encoding='utf-8') as f:
                 st.download_button(
                     label="📄 Download JSON",
                     data=f.read(),
@@ -598,7 +598,7 @@ def display_results(results: dict, session: dict, session_dir: Path):
     with col2:
         md_file = session_dir / "report.md"
         if md_file.exists():
-            with open(md_file, 'r') as f:
+            with open(md_file, 'r', encoding='utf-8') as f:
                 st.download_button(
                     label="📝 Download Markdown",
                     data=f.read(),
@@ -632,7 +632,7 @@ def display_results(results: dict, session: dict, session_dir: Path):
     with tabs[0]:
         md_file = session_dir / "report.md"
         if md_file.exists():
-            with open(md_file, 'r') as f:
+            with open(md_file, 'r', encoding='utf-8') as f:
                 report_content = f.read()
                 st.markdown(report_content)
 
@@ -1091,7 +1091,7 @@ def execute_frameworks_on_session(
         # Read existing config or create new one
         json_file = session_dir / "analysis.json"
         if json_file.exists():
-            with open(json_file, 'r') as f:
+            with open(json_file, 'r', encoding='utf-8') as f:
                 full_results = json.load(f)
         else:
             full_results = base_results
@@ -1162,8 +1162,8 @@ def execute_frameworks_on_session(
             full_results['summary']['current_phase'] = 'Phase 2: Strategy Complete'
 
             # Save updated results
-            with open(json_file, 'w') as f:
-                json.dump(full_results, f, indent=2, default=str)
+            with open(json_file, 'w', encoding='utf-8') as f:
+                json.dump(full_results, f, indent=2, default=str, ensure_ascii=False)
 
             # Save state after Phase 2
             state_file = session_dir / "state.json"
@@ -1311,7 +1311,7 @@ def past_analyses_page():
                         if md_file.exists():
                             if st.button("👁️ View", key=f"view_{session['session_id']}", use_container_width=True):
                                 st.session_state.viewing_session = session
-                                with open(md_file, 'r') as f:
+                                with open(md_file, 'r', encoding='utf-8') as f:
                                     st.markdown("---")
                                     st.markdown(f.read())
 
@@ -1320,7 +1320,7 @@ def past_analyses_page():
                         # Check if this is a Business Overview (can add frameworks)
                         json_file = Path(session['output_dir']) / "analysis.json"
                         if json_file.exists():
-                            with open(json_file, 'r') as f:
+                            with open(json_file, 'r', encoding='utf-8') as f:
                                 results = json.load(f)
                                 analysis_type = results.get('analysis_type', 'full')
                                 phase2_data = results.get('phase2', {})
@@ -1337,7 +1337,7 @@ def past_analyses_page():
                     with st.expander("🎯 Add Strategic Frameworks", expanded=True):
                         json_file = Path(session['output_dir']) / "analysis.json"
                         if json_file.exists():
-                            with open(json_file, 'r') as f:
+                            with open(json_file, 'r', encoding='utf-8') as f:
                                 results = json.load(f)
 
                             # Render framework selector

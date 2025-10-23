@@ -53,7 +53,7 @@ def generate_markdown_report(
     if output_path:
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_file, 'w') as f:
+        with open(output_file, 'w', encoding='utf-8') as f:
             f.write(report)
 
     return report
@@ -519,7 +519,7 @@ Based on this Business Overview of **{company_name}**, we recommend the followin
     if output_path:
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_file, 'w') as f:
+        with open(output_file, 'w', encoding='utf-8') as f:
             f.write(report)
 
     return report

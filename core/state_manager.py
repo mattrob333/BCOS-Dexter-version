@@ -162,12 +162,12 @@ class StateManager:
         }
 
         Path(filepath).parent.mkdir(parents=True, exist_ok=True)
-        with open(filepath, 'w') as f:
-            json.dump(state_dict, f, indent=2)
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(state_dict, f, indent=2, ensure_ascii=False)
 
     def load_state(self, filepath: str):
         """Load state from JSON file (for recovery)."""
-        with open(filepath, 'r') as f:
+        with open(filepath, 'r', encoding='utf-8') as f:
             state_dict = json.load(f)
 
         self.company_name = state_dict.get('company_name', '')
