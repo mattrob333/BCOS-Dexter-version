@@ -315,7 +315,7 @@ Be thorough and specific. Focus on factors most relevant to this company and ind
 
     try:
         response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-3-7-sonnet-20250219",
             max_tokens=12000,
             messages=[{"role": "user", "content": prompt}]
         )

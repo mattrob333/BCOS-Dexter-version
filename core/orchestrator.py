@@ -166,10 +166,10 @@ class BusinessContextOrchestrator:
                 self._store_phase1_result(task, result)
                 self.state.update_task_status(task.id, "completed", result=result)
                 completed_task_ids.append(task.id)
-                logger.info(f"✓ {task.id} completed successfully")
+                logger.info(f"[OK] {task.id} completed successfully")
             else:
                 self.state.update_task_status(task.id, "failed", error=feedback)
-                logger.warning(f"✗ {task.id} validation failed: {feedback}")
+                logger.warning(f"[X] {task.id} validation failed: {feedback}")
 
         # Return Phase 1 context
         return self.state.phase1_context
@@ -229,10 +229,10 @@ class BusinessContextOrchestrator:
                 self._store_phase2_result(task, result)
                 self.state.update_task_status(task.id, "completed", result=result)
                 completed_task_ids.append(task.id)
-                logger.info(f"✓ {task.id} completed successfully")
+                logger.info(f"[OK] {task.id} completed successfully")
             else:
                 self.state.update_task_status(task.id, "failed", error=feedback)
-                logger.warning(f"✗ {task.id} validation failed: {feedback}")
+                logger.warning(f"[X] {task.id} validation failed: {feedback}")
 
         # Return Phase 2 context
         return self.state.phase2_context

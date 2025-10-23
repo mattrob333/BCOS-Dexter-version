@@ -240,7 +240,7 @@ Be specific with numbers where possible. Use your knowledge of this industry to 
 
     try:
         response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-3-7-sonnet-20250219",
             max_tokens=8000,
             messages=[{"role": "user", "content": prompt}]
         )

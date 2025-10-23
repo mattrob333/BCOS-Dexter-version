@@ -9,6 +9,10 @@ from anthropic import Anthropic
 import os
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent.parent
@@ -136,7 +140,7 @@ Be specific and extract concrete details from the content.
 
     try:
         response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-3-7-sonnet-20250219",
             max_tokens=2000,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -212,7 +216,7 @@ Be honest about confidence and acknowledge if information may be outdated.
 
     try:
         response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-3-7-sonnet-20250219",
             max_tokens=2000,
             messages=[{"role": "user", "content": prompt}]
         )

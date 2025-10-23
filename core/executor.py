@@ -8,11 +8,15 @@ loop detection and step limits. Inspired by Dexter's execution pattern.
 from typing import Dict, Any, Optional, List
 from anthropic import Anthropic
 import os
+from dotenv import load_dotenv
 import importlib
 import sys
 from pathlib import Path
 from core.state_manager import Task
 from utils.logger import setup_logger
+
+# Load environment variables
+load_dotenv()
 
 logger = setup_logger(__name__)
 
@@ -42,7 +46,7 @@ class Executor:
         """
         self.max_steps_per_task = max_steps_per_task
         self.client = Anthropic(api_key=api_key or os.getenv('ANTHROPIC_API_KEY'))
-        self.model = "claude-3-5-sonnet-20241022"
+        self.model = "claude-3-7-sonnet-20250219"
 
         # Track recent actions for loop detection
         self.recent_actions: List[str] = []

@@ -8,8 +8,12 @@ executable tasks. Inspired by Dexter's planning approach.
 from typing import Dict, Any, List
 from anthropic import Anthropic
 import os
+from dotenv import load_dotenv
 from core.state_manager import Task
 from utils.logger import setup_logger
+
+# Load environment variables
+load_dotenv()
 
 logger = setup_logger(__name__)
 
@@ -30,7 +34,7 @@ class Planner:
             api_key: Anthropic API key (defaults to ANTHROPIC_API_KEY env var)
         """
         self.client = Anthropic(api_key=api_key or os.getenv('ANTHROPIC_API_KEY'))
-        self.model = "claude-3-5-sonnet-20241022"
+        self.model = "claude-3-7-sonnet-20250219"
 
     def plan_phase1_tasks(self, config: Dict[str, Any]) -> List[Task]:
         """

@@ -42,7 +42,7 @@ def load_config() -> Dict[str, Any]:
     config_path = Path("config.yaml")
     
     if not config_path.exists():
-        print("❌ Error: config.yaml not found")
+        print("[ERROR] Error: config.yaml not found")
         print("\nPlease create config.yaml with your target company and goals.")
         print("See config.yaml.example for a template.")
         sys.exit(1)
@@ -52,7 +52,7 @@ def load_config() -> Dict[str, Any]:
             config = yaml.safe_load(f)
         return config
     except yaml.YAMLError as e:
-        print(f"❌ Error: Invalid YAML in config.yaml")
+        print(f"[ERROR] Error: Invalid YAML in config.yaml")
         print(f"Details: {e}")
         sys.exit(1)
 
@@ -75,11 +75,11 @@ def validate_config(config: Dict[str, Any]) -> bool:
     
     for field in required_fields:
         if field not in config:
-            print(f"❌ Error: Missing required field '{field}' in config.yaml")
+            print(f"[ERROR] Error: Missing required field '{field}' in config.yaml")
             return False
     
     if "name" not in config["company"]:
-        print("❌ Error: Missing 'company.name' in config.yaml")
+        print("[ERROR] Error: Missing 'company.name' in config.yaml")
         return False
     
     return True
@@ -98,20 +98,20 @@ def main():
     """
     
     print("=" * 60)
-    print("🚀 Business Context OS")
+    print("BCOS - Business Context OS")
     print("   Autonomous Business Research & Strategy System")
     print("=" * 60)
     print()
-    
+
     # Load configuration
     config = load_config()
-    
+
     # Validate configuration
     if not validate_config(config):
         sys.exit(1)
-    
+
     company_name = config['company']['name']
-    print(f"🎯 Target Company: {company_name}")
+    print(f"Target Company: {company_name}")
     print()
 
     # Initialize orchestrator
@@ -121,10 +121,10 @@ def main():
     logger = setup_logger(__name__, debug=debug, log_file=log_file)
 
     if log_file:
-        print(f"📝 Debug logging enabled: {log_file}")
+        print(f"Debug logging enabled: {log_file}")
         print()
 
-    print("🔧 Initializing orchestrator...")
+    print("Initializing orchestrator...")
     orchestrator = BusinessContextOrchestrator(config)
     print()
 
@@ -134,7 +134,7 @@ def main():
 
         # Check for errors
         if 'error' in results:
-            print(f"\n❌ Error during execution: {results['error']}")
+            print(f"\n[ERROR] Error during execution: {results['error']}")
             return 1
 
         # Save results to JSON
@@ -149,7 +149,7 @@ def main():
 
         print()
         print("=" * 60)
-        print("✨ Analysis Complete!")
+        print("[SUCCESS] Analysis Complete!")
         print("=" * 60)
         print()
         print(f"📁 Results saved to: {results_file}")
@@ -183,23 +183,23 @@ def main():
             print(f"📄 Markdown report: {report_file}")
         except Exception as e:
             logger.warning(f"Error generating markdown report: {e}")
-            print(f"⚠️  Warning: Could not generate markdown report")
+            print(f"[WARN]  Warning: Could not generate markdown report")
 
         print()
         print("=" * 60)
-        print("✅ All outputs generated successfully!")
+        print("[OK] All outputs generated successfully!")
         print("=" * 60)
         print()
 
         return 0
 
     except KeyboardInterrupt:
-        print("\n\n⚠️  Execution interrupted by user")
+        print("\n\n[WARN]  Execution interrupted by user")
         print("State can be recovered from outputs/")
         return 130
 
     except Exception as e:
-        print(f"\n❌ Fatal error: {e}")
+        print(f"\n[ERROR] Fatal error: {e}")
         logger.error(f"Fatal error in main: {e}", exc_info=True)
         return 1
     
