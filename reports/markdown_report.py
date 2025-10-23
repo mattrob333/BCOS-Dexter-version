@@ -2,11 +2,52 @@
 Markdown Report Generator.
 
 Transforms BCOS analysis results into professional markdown reports.
+Updated to support Multi-Source Truth Engine verified_dataset format.
 """
 
 from typing import Dict, Any
 from datetime import datetime
 from pathlib import Path
+
+
+def extract_from_verified_dataset(company_intel: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Extract data from company intelligence result.
+
+    Handles multiple formats:
+    1. New clean format: {'data': {...}} - Simple dictionary
+    2. Old verified_dataset format: {'verified_dataset': {'facts': [...]}}
+    3. Direct format: Company intel dictionary itself
+
+    Args:
+        company_intel: Company intelligence data
+
+    Returns:
+        Flat dictionary with extracted values
+    """
+    # New clean format: {'data': {...}}
+    if 'data' in company_intel and isinstance(company_intel['data'], dict):
+        return company_intel['data']
+
+    # Old verified_dataset format
+    if 'verified_dataset' in company_intel:
+        verified_dataset = company_intel['verified_dataset']
+        facts = verified_dataset.get('facts', [])
+
+        # Convert facts array to flat dictionary
+        extracted = {}
+        for fact in facts:
+            claim = fact.get('claim', '')
+            value = fact.get('value')
+
+            # Only include facts that have values
+            if value is not None:
+                extracted[claim] = value
+
+        return extracted
+
+    # Direct format fallback
+    return company_intel
 
 
 def generate_markdown_report(
@@ -230,29 +271,69 @@ def _format_market_intelligence(market: Dict[str, Any]) -> str:
 
 
 def _format_competitor_intelligence(comp: Dict[str, Any]) -> str:
-    """Format competitor intelligence section."""
+    """Format competitor intelligence section with bulletproof error handling."""
     output = ["### Competitor Intelligence\n"]
 
+    # Check if this is an error response
+    if not isinstance(comp, dict):
+        output.append("*Competitor data unavailable*\n")
+        return '\n'.join(output)
+
+    if comp.get('success') == False:
+        error_msg = comp.get('error', 'Unknown error')
+        output.append(f"*{error_msg}*\n")
+        return '\n'.join(output)
+
+    # Safely handle competitor_profiles
     if 'competitor_profiles' in comp:
-        output.append("#### Key Competitors\n")
-        for profile in comp['competitor_profiles'][:5]:  # Top 5
-            name = profile.get('name', 'Competitor')
-            threat = profile.get('threat_assessment', {})
+        competitor_profiles = comp['competitor_profiles']
 
-            output.append(f"**{name}**")
-            positioning = profile.get('market_positioning', {})
-            output.append(f"- Position: {positioning.get('value_proposition', 'Unknown')}")
+        # Verify it's a dict before iterating
+        if isinstance(competitor_profiles, dict) and competitor_profiles:
+            output.append("#### Key Competitors\n")
 
-            threat_level = threat.get('threat_level', 'unknown')
-            output.append(f"- Threat Level: {threat_level}")
-            output.append("")
+            try:
+                for competitor_name, profile in list(competitor_profiles.items())[:5]:  # Top 5
+                    if not isinstance(profile, dict):
+                        continue  # Skip malformed entries
 
+                    # Skip error entries
+                    if 'error' in profile:
+                        output.append(f"**{competitor_name}**: *{profile['error']}*")
+                        output.append("")
+                        continue
+
+                    # Safely extract data
+                    output.append(f"**{competitor_name}**")
+
+                    positioning = profile.get('market_positioning', {})
+                    if isinstance(positioning, dict):
+                        value_prop = positioning.get('value_proposition', 'Unknown')
+                        output.append(f"- Position: {value_prop}")
+
+                    threat = profile.get('threat_assessment', {})
+                    if isinstance(threat, dict):
+                        threat_level = threat.get('threat_level', 'unknown')
+                        output.append(f"- Threat Level: {threat_level}")
+
+                    output.append("")
+            except (AttributeError, TypeError) as e:
+                output.append(f"*Error formatting competitor data: {str(e)}*\n")
+
+    # Safely handle competitive_landscape
     if 'competitive_landscape' in comp:
         landscape = comp['competitive_landscape']
-        output.append("#### Competitive Landscape")
-        output.append(f"- **Our Position**: {landscape.get('our_position', 'Unknown')}")
-        output.append(f"- **Market Leaders**: {', '.join(landscape.get('market_leaders', []))}")
-        output.append("")
+
+        if isinstance(landscape, dict):
+            output.append("#### Competitive Landscape")
+            our_pos = landscape.get('our_position', 'Unknown')
+            output.append(f"- **Our Position**: {our_pos}")
+
+            market_leaders = landscape.get('market_leaders', [])
+            if isinstance(market_leaders, list):
+                leaders_str = ', '.join(str(l) for l in market_leaders) if market_leaders else 'Unknown'
+                output.append(f"- **Market Leaders**: {leaders_str}")
+            output.append("")
 
     return '\n'.join(output)
 
@@ -529,16 +610,19 @@ def _generate_products_services_section(company_intel: Dict[str, Any]) -> str:
     """Generate detailed products and services section."""
     output = ["## 1. Products & Services\n"]
 
-    if 'products_services' in company_intel:
-        products = company_intel['products_services']
+    # Extract data from verified_dataset if present
+    company_data = extract_from_verified_dataset(company_intel)
+
+    if 'products_services' in company_data:
+        products = company_data['products_services']
         if isinstance(products, list) and products:
             output.append("### Product Portfolio\n")
             for product in products:
                 output.append(f"- {product}")
             output.append("")
 
-    if 'target_customers' in company_intel:
-        output.append(f"### Target Customers\n{company_intel['target_customers']}\n")
+    if 'target_customers' in company_data:
+        output.append(f"### Target Customers\n{company_data['target_customers']}\n")
 
     return '\n'.join(output)
 
@@ -547,8 +631,11 @@ def _generate_fact_pack_section(company_intel: Dict[str, Any]) -> str:
     """Generate company fact pack."""
     output = ["## 2. Company Fact Pack\n"]
 
-    if 'key_facts' in company_intel:
-        facts = company_intel['key_facts']
+    # Extract data from verified_dataset if present
+    company_data = extract_from_verified_dataset(company_intel)
+
+    if 'key_facts' in company_data:
+        facts = company_data['key_facts']
         for key, value in facts.items():
             if value and value != "Not specified":
                 label = key.replace('_', ' ').title()
@@ -567,9 +654,12 @@ def _generate_enhanced_executive_summary(
     """Generate enhanced executive summary with metrics, positioning, and insights."""
     output = ["## Executive Summary\n"]
 
+    # Extract data from verified_dataset if present
+    company_data = extract_from_verified_dataset(company_intel)
+
     # Company Overview
-    business_desc = company_intel.get('business_description', 'No description available.')
-    value_prop = company_intel.get('value_proposition', '')
+    business_desc = company_data.get('business_description', 'No description available.')
+    value_prop = company_data.get('value_proposition', '')
 
     output.append("### Company Overview")
     output.append(f"{business_desc}\n")
@@ -577,7 +667,7 @@ def _generate_enhanced_executive_summary(
         output.append(f"**Value Proposition**: {value_prop}\n")
 
     # Key Metrics (if available)
-    key_facts = company_intel.get('key_facts', {})
+    key_facts = company_data.get('key_facts', {})
     if key_facts and any(key_facts.values()):
         output.append("### Key Metrics\n")
         metrics = []
@@ -608,10 +698,18 @@ def _generate_enhanced_executive_summary(
         output.append(f"**Market Opportunity**: Operating in a ${tam} market with {growth} CAGR growth  ")
 
     # Competitive position
-    comp_list = competitors.get('competitors', [])
-    if comp_list and len(comp_list) > 0:
-        top_competitors = [c.get('company_name', 'Unknown') for c in comp_list[:3]]
+    # Handle both old format ('competitors' list) and new format ('competitor_profiles' dict)
+    competitor_profiles = competitors.get('competitor_profiles', {})
+    if isinstance(competitor_profiles, dict) and competitor_profiles:
+        # New format: dict keyed by competitor name
+        top_competitors = list(competitor_profiles.keys())[:3]
         output.append(f"**Key Competitors**: {', '.join(top_competitors)}  ")
+    else:
+        # Old format: list
+        comp_list = competitors.get('competitors', [])
+        if comp_list and len(comp_list) > 0:
+            top_competitors = [c.get('company_name', 'Unknown') for c in comp_list[:3]]
+            output.append(f"**Key Competitors**: {', '.join(top_competitors)}  ")
 
     # Primary value proposition from BMC
     value_props = bmc.get('value_propositions', [])
@@ -662,14 +760,17 @@ def _generate_fallback_bmc(company_intel: Dict[str, Any]) -> str:
     output = ["## 3. Business Model Canvas\n"]
     output.append("*Generated from available company intelligence*\n")
 
+    # Extract data from verified_dataset if present
+    company_data = extract_from_verified_dataset(company_intel)
+
     # Customer Segments
     output.append("### Customer Segments")
-    target_customers = company_intel.get('target_customers', 'Not specified')
+    target_customers = company_data.get('target_customers', 'Not specified')
     output.append(f"{target_customers}\n")
 
     # Value Propositions
     output.append("### Value Propositions")
-    value_prop = company_intel.get('value_proposition', 'Not specified')
+    value_prop = company_data.get('value_proposition', 'Not specified')
     output.append(f"{value_prop}\n")
 
     # Channels
@@ -682,12 +783,12 @@ def _generate_fallback_bmc(company_intel: Dict[str, Any]) -> str:
 
     # Revenue Streams
     output.append("### Revenue Streams")
-    business_model = company_intel.get('business_model', 'Not specified')
+    business_model = company_data.get('business_model', 'Not specified')
     output.append(f"{business_model}\n")
 
     # Key Resources
     output.append("### Key Resources")
-    products = company_intel.get('products_services', [])
+    products = company_data.get('products_services', [])
     if products:
         output.append("**Products & Services:**")
         for product in products[:5]:  # Top 5
@@ -712,7 +813,7 @@ def _generate_fallback_bmc(company_intel: Dict[str, Any]) -> str:
 
 
 def _generate_complete_bmc_section(bmc: Dict[str, Any], company_intel: Dict[str, Any] = None) -> str:
-    """Generate complete Business Model Canvas with all 9 sections."""
+    """Generate complete Business Model Canvas with all 9 sections - BULLETPROOF."""
     output = ["## 3. Business Model Canvas\n"]
 
     # If BMC is empty, build fallback from company_intelligence
@@ -728,63 +829,90 @@ def _generate_complete_bmc_section(bmc: Dict[str, Any], company_intel: Dict[str,
     if 'customer_segments' in bmc:
         output.append("### Customer Segments")
         for segment in bmc['customer_segments']:
-            output.append(f"**{segment.get('segment_name', 'Segment')}**  ")
-            output.append(f"{segment.get('description', '')}\n")
+            if isinstance(segment, dict):
+                output.append(f"**{segment.get('segment_name', 'Segment')}**  ")
+                output.append(f"{segment.get('description', '')}\n")
+            elif isinstance(segment, str):
+                output.append(f"- {segment}\n")
 
     # Value Propositions
     if 'value_propositions' in bmc:
         output.append("### Value Propositions")
         for vp in bmc['value_propositions']:
-            output.append(f"**For {vp.get('for_segment', 'segment')}:**  ")
-            output.append(f"{vp.get('core_value', '')}\n")
+            if isinstance(vp, dict):
+                output.append(f"**For {vp.get('for_segment', 'segment')}:**  ")
+                output.append(f"{vp.get('core_value', '')}\n")
+            elif isinstance(vp, str):
+                output.append(f"- {vp}\n")
 
     # Channels
     if 'channels' in bmc:
         output.append("### Channels")
         for channel in bmc['channels']:
-            output.append(f"- **{channel.get('channel_type', 'Channel')}**: {channel.get('description', '')}")
+            if isinstance(channel, dict):
+                output.append(f"- **{channel.get('channel_type', 'Channel')}**: {channel.get('description', '')}")
+            elif isinstance(channel, str):
+                output.append(f"- {channel}")
         output.append("")
 
     # Customer Relationships
     if 'customer_relationships' in bmc:
         output.append("### Customer Relationships")
         for rel in bmc['customer_relationships']:
-            output.append(f"- **{rel.get('relationship_type', 'Type')}**: {rel.get('description', '')}")
+            if isinstance(rel, dict):
+                output.append(f"- **{rel.get('relationship_type', 'Type')}**: {rel.get('description', '')}")
+            elif isinstance(rel, str):
+                output.append(f"- {rel}")
         output.append("")
 
     # Revenue Streams
     if 'revenue_streams' in bmc:
         output.append("### Revenue Streams")
         for stream in bmc['revenue_streams']:
-            output.append(f"- **{stream.get('stream_type', 'Stream')}**: {stream.get('description', '')}")
+            if isinstance(stream, dict):
+                output.append(f"- **{stream.get('stream_type', 'Stream')}**: {stream.get('description', '')}")
+            elif isinstance(stream, str):
+                output.append(f"- {stream}")
         output.append("")
 
     # Key Resources
     if 'key_resources' in bmc:
         output.append("### Key Resources")
         for resource in bmc['key_resources']:
-            output.append(f"- **{resource.get('resource_type', 'Resource')}**: {resource.get('description', '')}")
+            if isinstance(resource, dict):
+                output.append(f"- **{resource.get('resource_type', 'Resource')}**: {resource.get('description', '')}")
+            elif isinstance(resource, str):
+                output.append(f"- {resource}")
         output.append("")
 
     # Key Activities
     if 'key_activities' in bmc:
         output.append("### Key Activities")
         for activity in bmc['key_activities']:
-            output.append(f"- {activity.get('activity', '')}")
+            if isinstance(activity, dict):
+                output.append(f"- {activity.get('activity', activity.get('description', ''))}")
+            elif isinstance(activity, str):
+                output.append(f"- {activity}")
         output.append("")
 
     # Key Partnerships
     if 'key_partnerships' in bmc:
         output.append("### Key Partnerships")
         for partner in bmc['key_partnerships']:
-            output.append(f"- **{partner.get('partner_type', 'Partner')}**: {partner.get('description', '')}")
+            if isinstance(partner, dict):
+                output.append(f"- **{partner.get('partner_type', 'Partner')}**: {partner.get('description', '')}")
+            elif isinstance(partner, str):
+                output.append(f"- {partner}")
         output.append("")
 
     # Cost Structure
     if 'cost_structure' in bmc:
         output.append("### Cost Structure")
         for cost in bmc['cost_structure']:
-            output.append(f"- **{cost.get('cost_category', 'Cost')}**: {cost.get('description', '')}")
+            if isinstance(cost, dict):
+                output.append(f"- **{cost.get('cost_category', 'Cost')}**: {cost.get('description', '')}")
+            elif isinstance(cost, str):
+                output.append(f"- {cost}")
         output.append("")
 
     return '\n'.join(output)
@@ -824,7 +952,58 @@ def _generate_competitive_landscape_section(competitors: Dict[str, Any]) -> str:
     """Generate competitive landscape with top 4 competitors."""
     output = ["## 5. Competitive Landscape\n"]
 
-    if 'competitors' in competitors:
+    # Handle both old format ('competitors' list) and new format ('competitor_profiles' dict)
+    if 'competitor_profiles' in competitors:
+        # New format: dict keyed by competitor name
+        competitor_profiles = competitors['competitor_profiles']
+        if isinstance(competitor_profiles, dict):
+            # Convert dict to list of items and take top 4
+            for i, (competitor_name, profile) in enumerate(list(competitor_profiles.items())[:4], 1):
+                # Skip if this is an error entry
+                if 'error' in profile:
+                    output.append(f"### Competitor {i}: {competitor_name}\n")
+                    output.append(f"*Data unavailable: {profile['error']}*\n")
+                    continue
+
+                output.append(f"### Competitor {i}: {competitor_name}\n")
+
+                # Company description
+                company_desc = profile.get('company_description', 'No overview available.')
+                output.append(f"**Overview**: {company_desc}\n")
+
+                # Value proposition
+                value_prop = profile.get('value_proposition', '')
+                if value_prop:
+                    output.append(f"**Value Proposition**: {value_prop}\n")
+
+                # Business facts
+                business_facts = profile.get('business_facts', {})
+                if business_facts:
+                    output.append("**Key Facts:**")
+                    if business_facts.get('revenue') and business_facts['revenue'] != 'Unknown':
+                        output.append(f"- Revenue: {business_facts['revenue']}")
+                    if business_facts.get('employees') and business_facts['employees'] != 'Unknown':
+                        output.append(f"- Employees: {business_facts['employees']}")
+                    output.append("")
+
+                # Competitive strengths
+                strengths = profile.get('competitive_strengths', [])
+                if strengths:
+                    output.append("**Competitive Strengths:**")
+                    for strength in strengths[:3]:
+                        output.append(f"- {strength}")
+                    output.append("")
+
+                # Recent moves
+                recent_moves = profile.get('recent_moves', [])
+                if recent_moves:
+                    output.append("**Recent Strategic Moves:**")
+                    for move in recent_moves[:2]:
+                        output.append(f"- {move}")
+                    output.append("")
+
+    elif 'competitors' in competitors:
+        # Old format: list of competitor objects
         comps = competitors['competitors'][:4]  # Top 4
         for i, comp in enumerate(comps, 1):
             output.append(f"### Competitor {i}: {comp.get('company_name', 'Unknown')}\n")
@@ -844,6 +1023,8 @@ def _generate_competitive_landscape_section(competitors: Dict[str, Any]) -> str:
                 for weakness in comp['weaknesses'][:3]:
                     output.append(f"- {weakness}")
                 output.append("")
+    else:
+        output.append("*No competitor data available*\n")
 
     return '\n'.join(output)
 

@@ -57,25 +57,27 @@ Website: {company['website']}
 Industry: {company['industry']}
 Analysis Depth: {depth}
 
-Phase 1 involves gathering foundational business intelligence across 6 key areas:
-1. Company Intelligence - Basic company facts, products, business model
-2. Business Model Canvas - BMC analysis of value proposition, customers, channels, etc.
-3. Value Chain Analysis - Map activities from suppliers to customers
-4. Organizational Structure - Leadership, teams, culture
-5. Market Intelligence - Market size, trends, opportunities
-6. Competitor Intelligence - Profile key competitors
+Phase 1 involves gathering foundational business intelligence across these key areas:
+1. Company Intelligence - Basic company facts, products, business model (skill: "company_intelligence")
+2. Business Model Canvas - BMC analysis of value proposition, customers, channels (skill: "business_model_canvas")
+3. Value Chain Analysis - Map activities from suppliers to customers (skill: "value_chain")
+4. Organizational Structure - Leadership, teams, culture (skill: "organizational_structure")
+5. Market Intelligence - Market size, trends, opportunities (skill: "market_intelligence")
+6. Competitor Intelligence - Profile key competitors (skill: "competitor_intelligence")
+
+IMPORTANT: You MUST use the exact skill names listed above. Do NOT create new skill names.
 
 Create a task list for Phase 1. For each task:
 - Provide a clear description
-- Identify which skill should execute it
+- Identify which skill should execute it using the exact skill names above
 - Note any dependencies on other tasks
 
 Return ONLY a JSON array of tasks in this format:
 [
   {{
     "id": "phase1_task_1",
-    "description": "Gather basic company intelligence from website",
-    "skill": "company-intelligence",
+    "description": "Gather basic company intelligence from website and public sources",
+    "skill": "company_intelligence",
     "dependencies": []
   }},
   ...
@@ -224,35 +226,35 @@ All Phase 2 tasks implicitly depend on Phase 1 completion. Be specific about wha
                 id="phase1_task_1",
                 description="Gather company intelligence from website and public sources",
                 phase="phase1",
-                skill="company-intelligence",
+                skill="company_intelligence",
                 dependencies=[]
             ),
             Task(
                 id="phase1_task_2",
                 description="Analyze business model using Business Model Canvas framework",
                 phase="phase1",
-                skill="business-model-canvas",
+                skill="business_model_canvas",
                 dependencies=["phase1_task_1"]
             ),
             Task(
                 id="phase1_task_3",
                 description="Map company value chain from suppliers to customers",
                 phase="phase1",
-                skill="value-chain-mapper",
+                skill="value_chain",
                 dependencies=["phase1_task_1"]
             ),
             Task(
                 id="phase1_task_4",
                 description="Research market landscape and competitive dynamics",
                 phase="phase1",
-                skill="market-intelligence",
+                skill="market_intelligence",
                 dependencies=["phase1_task_1"]
             ),
             Task(
                 id="phase1_task_5",
                 description="Profile key competitors and their strategies",
                 phase="phase1",
-                skill="competitor-intelligence",
+                skill="competitor_intelligence",
                 dependencies=["phase1_task_4"]
             ),
         ]

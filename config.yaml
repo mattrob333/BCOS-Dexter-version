@@ -5,9 +5,9 @@
 # Target Company
 # ============================================
 company:
-  name: "Stripe"
-  website: "https://stripe.com"
-  industry: "Financial Technology"
+  name: "Anthropic"
+  website: "https://anthropic.com"
+  industry: "Artificial Intelligence"
 
 # ============================================
 # Research Goals
@@ -99,8 +99,9 @@ verification:
   multi_source_enabled: true
 
   # Minimum confidence threshold (0.0-1.0) to accept facts
+  # PERMISSIVE MODE for Phase 1 (user-editable): 0.2 = accept most data with sources
   # 0.5 = moderate confidence, 0.7 = high confidence, 0.9 = very high
-  min_confidence: 0.5
+  min_confidence: 0.2
 
   # Require all facts to have source citations
   require_citation: true

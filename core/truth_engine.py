@@ -37,12 +37,13 @@ class TruthEngine:
     based on source agreement, recency, and reliability.
     """
 
-    def __init__(self, min_confidence: float = 0.5):
+    def __init__(self, min_confidence: float = 0.2):
         """
         Initialize Truth Engine.
 
         Args:
             min_confidence: Minimum confidence threshold for accepting facts (0.0-1.0)
+                          Default 0.2 for permissive Phase 1 research (user-editable)
         """
         self.min_confidence = min_confidence
 
@@ -111,10 +112,12 @@ class TruthEngine:
             conflicts.append(conflict)
 
         # Determine if verified
+        # PERMISSIVE MODE: Accept data even with conflicts (Phase 1 is user-editable)
+        # We include conflicting data and let users decide - transparency over strictness
         verified = (
             len(supporting_sources) > 0 and
-            confidence >= self.min_confidence and
-            len(conflicts) == 0
+            confidence >= self.min_confidence
+            # Removed: len(conflicts) == 0  - conflicts no longer block verification
         )
 
         return VerifiedFact(
@@ -274,9 +277,10 @@ class TruthEngine:
         if primary_count > 0:
             weighted_confidence *= 1.1  # 10% boost for primary sources
 
-        # Penalty for conflicts
+        # Reduced penalty for conflicts (Phase 1 permissive mode)
+        # Small penalty to prefer agreed-upon facts, but don't exclude conflicting data
         if conflicts:
-            conflict_penalty = len(conflicts) * 0.1
+            conflict_penalty = len(conflicts) * 0.02  # 2% per conflict (was 10%)
             weighted_confidence -= conflict_penalty
 
         # Bonus for multiple sources
@@ -294,6 +298,8 @@ class TruthEngine:
         Extract all unique claims across datasets.
 
         Returns dict mapping claim_key -> {claim, value, sources}
+
+        Intelligently merges values by preferring real data over "Unknown" or empty values.
         """
         claims = {}
 
@@ -309,10 +315,67 @@ class TruthEngine:
                         'value': value,
                         'sources': []
                     }
+                else:
+                    # Intelligently merge values - prefer data over "Unknown"
+                    existing_value = claims[claim_key]['value']
+                    new_value = value
+
+                    # If new value is better than existing, update it
+                    if self._is_better_value(new_value, existing_value):
+                        claims[claim_key]['value'] = new_value
 
                 claims[claim_key]['sources'].append(dataset)
 
         return claims
+
+    def _is_better_value(self, new_value: Any, existing_value: Any) -> bool:
+        """
+        Determine if new_value is better than existing_value.
+
+        Prefers actual data over "Unknown", empty strings, or empty collections.
+        For nested dictionaries (like key_facts), merges intelligently.
+        """
+        # If existing is None or empty string, new is better
+        if existing_value is None or existing_value == "":
+            return new_value is not None and new_value != ""
+
+        # If both are dicts (e.g., key_facts), merge intelligently
+        if isinstance(existing_value, dict) and isinstance(new_value, dict):
+            # Check if new_value has more real data than existing
+            existing_real_count = sum(1 for v in existing_value.values()
+                                     if v and v != "Unknown" and v != "")
+            new_real_count = sum(1 for v in new_value.values()
+                                if v and v != "Unknown" and v != "")
+
+            # If new has more real data, it's better
+            if new_real_count > existing_real_count:
+                return True
+
+            # If new has same or fewer, merge them (prefer non-Unknown values)
+            if new_real_count >= existing_real_count:
+                merged = existing_value.copy()
+                for k, v in new_value.items():
+                    if v and v != "Unknown" and v != "":
+                        merged[k] = v
+                # Update the existing value in place by returning False
+                # but modifying existing_value (which is a reference)
+                existing_value.update(merged)
+            return False
+
+        # For strings, prefer non-"Unknown" values
+        if isinstance(existing_value, str) and isinstance(new_value, str):
+            if existing_value.lower() == "unknown" and new_value.lower() != "unknown":
+                return True
+            if existing_value == "" and new_value != "":
+                return True
+
+        # For lists, prefer non-empty
+        if isinstance(existing_value, list) and isinstance(new_value, list):
+            if len(existing_value) == 0 and len(new_value) > 0:
+                return True
+
+        # Default: keep existing value
+        return False
 
     def _normalize_key(self, key: str) -> str:
         """Normalize key for comparison."""

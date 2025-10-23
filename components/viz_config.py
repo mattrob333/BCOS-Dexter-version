@@ -4,17 +4,17 @@ Visualization Configuration and Styling.
 Centralized configuration for Business Model Canvas and Value Chain visualizations.
 """
 
-# Business Model Canvas Colors (Strategyzer-inspired palette)
+# Business Model Canvas Colors (Clean, readable palette)
 BMC_COLORS = {
-    'key_partners': '#FFB6C1',          # Light pink
-    'key_activities': '#FFE4B5',        # Moccasin
-    'key_resources': '#FFE4B5',         # Moccasin
-    'value_propositions': '#98FB98',    # Pale green (central, most important)
-    'customer_relationships': '#87CEEB', # Sky blue
-    'channels': '#87CEEB',              # Sky blue
-    'customer_segments': '#DDA0DD',     # Plum
-    'cost_structure': '#F0E68C',        # Khaki
-    'revenue_streams': '#90EE90'        # Light green
+    'key_partners': '#FFFFFF',          # White
+    'key_activities': '#F5F5F5',        # Off-white
+    'key_resources': '#F5F5F5',         # Off-white
+    'value_propositions': '#E8F4F8',    # Very light blue (central, most important)
+    'customer_relationships': '#F5F5F5',# Off-white
+    'channels': '#F5F5F5',              # Off-white
+    'customer_segments': '#FFFFFF',     # White
+    'cost_structure': '#FFF8DC',        # Light cream
+    'revenue_streams': '#F0FFF0'        # Very light green
 }
 
 # Value Chain Colors (Porter's Value Chain palette)
@@ -75,11 +75,11 @@ BMC_LAYOUT = {
             'title': 'Customer Segments'
         },
         'cost_structure': {
-            'x': 0.02, 'y': 0.87, 'width': 0.48, 'height': 0.11,
+            'x': 0.02, 'y': 0.02, 'width': 0.48, 'height': 0.11,
             'title': 'Cost Structure'
         },
         'revenue_streams': {
-            'x': 0.52, 'y': 0.87, 'width': 0.46, 'height': 0.11,
+            'x': 0.52, 'y': 0.02, 'width': 0.46, 'height': 0.11,
             'title': 'Revenue Streams'
         }
     }

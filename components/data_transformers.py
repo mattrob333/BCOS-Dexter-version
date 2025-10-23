@@ -84,9 +84,17 @@ def transform_value_chain_for_visualization(phase1_results: Dict[str, Any]) -> D
     }
 
 
-def _extract_list_items(items: List[Any], max_items: int = 5) -> List[str]:
+def _extract_list_items(items: Any, max_items: int = 5) -> List[str]:
     """Extract text items from list of dictionaries or strings."""
     if not items:
+        return []
+
+    # DEFENSIVE: Handle dict vs list
+    if isinstance(items, dict):
+        # Convert dict values to list
+        items = list(items.values())
+    elif not isinstance(items, list):
+        # Not a list or dict - return empty
         return []
 
     result = []

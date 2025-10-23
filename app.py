@@ -20,6 +20,9 @@ from core.orchestrator import BusinessContextOrchestrator
 from utils.session_manager import SessionManager, slugify
 from utils.logger import setup_logger
 from reports.markdown_report import generate_markdown_report, generate_business_overview_report
+
+# Initialize logger
+logger = setup_logger(__name__)
 from utils.progress_tracker import ProgressTracker, ProgressStatus, ProgressLevel
 from components.visualizations import (
     create_business_model_canvas,
@@ -96,6 +99,13 @@ def update_progress_ui(status: dict, ui_elements: dict):
         status: Current progress status from ProgressTracker
         ui_elements: Dictionary of Streamlit UI elements
     """
+    # DEFENSIVE: Check if status is actually a dict
+    if not isinstance(status, dict):
+        st.error(f"❌ Progress update error: Expected dict but got {type(status).__name__}")
+        st.code(f"Value: {str(status)[:500]}")
+        logger.error(f"update_progress_ui received non-dict status: type={type(status)}, value={status}")
+        return
+
     # Update header
     phase = status.get('phase', 'Analysis')
     completed = status.get('completed', 0)
@@ -443,6 +453,29 @@ def run_analysis(
         'competitors': competitors,
         'analysis_mode': analysis_mode,  # NEW: analysis mode
         'run_business_overview': run_business_overview,  # NEW: whether to run Phase 1
+        'data_sources': {
+            'firecrawl': {
+                'enabled': True,
+                'use_mcp': True,
+                'fallback_enabled': True
+            },
+            'exa': {
+                'enabled': True,
+                'use_mcp': True,
+                'use_deep_researcher': True,
+                'fallback_enabled': True
+            },
+            'perplexity': {
+                'enabled': True,
+                'use_for_verification': True
+            }
+        },
+        'verification': {
+            'min_confidence': 0.2,
+            'multi_source_enabled': True,
+            'require_citation': True,
+            'flag_conflicts': True
+        },
         'advanced': {
             'debug': False,
             'max_steps': 50,
@@ -549,13 +582,159 @@ def run_analysis(
                 'session_dir': str(session_dir)
             }
 
+            # Trigger rerun to display results
+            st.rerun()
+
         except Exception as e:
+            # Log full traceback for debugging
+            import traceback
+            error_traceback = traceback.format_exc()
+            logger.error(f"Error during analysis: {error_traceback}")
+
             st.error(f"❌ Error during analysis: {str(e)}")
+
             session_manager.update_session(session_id, company_slug, {
                 'status': 'failed',
                 'error': str(e),
+                'error_traceback': error_traceback,
                 'completed_at': datetime.now().isoformat()
             })
+
+
+def display_source_verification(verified_dataset: dict):
+    """Display multi-source verification data with confidence scores and source attribution."""
+    st.subheader("🔍 Multi-Source Verification")
+
+    st.markdown("""
+    This tab shows the **Multi-Source Truth Engine** results, including confidence scores,
+    source attribution, and conflict detection for all verified facts.
+    """)
+
+    # Overall metrics
+    facts = verified_dataset.get('facts', [])
+    verified_count = sum(1 for f in facts if f.get('verified', False))
+    conflict_count = sum(1 for f in facts if f.get('has_conflicts', False))
+
+    # Calculate average confidence
+    confidences = [f.get('confidence', 0) for f in facts]
+    avg_confidence = sum(confidences) / len(confidences) if confidences else 0
+
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Total Facts", len(facts))
+    with col2:
+        st.metric("Verified", verified_count, delta=f"{verified_count/len(facts)*100:.0f}%" if facts else "0%")
+    with col3:
+        st.metric("Avg Confidence", f"{avg_confidence:.0%}",
+                 delta="High" if avg_confidence >= 0.7 else "Medium" if avg_confidence >= 0.5 else "Low")
+    with col4:
+        st.metric("Conflicts", conflict_count, delta="⚠️" if conflict_count > 0 else "✅")
+
+    st.markdown("---")
+
+    # Display each fact with confidence and sources
+    for idx, fact in enumerate(facts):
+        claim = fact.get('claim', 'Unknown')
+        value = fact.get('value', 'N/A')
+        confidence = fact.get('confidence', 0)
+        confidence_level = fact.get('confidence_level', 'unknown')
+        verified = fact.get('verified', False)
+        has_conflicts = fact.get('has_conflicts', False)
+        sources = fact.get('sources', [])
+        conflicts = fact.get('conflicts', [])
+        notes = fact.get('notes', '')
+
+        # Confidence badge color
+        if confidence_level == 'high':
+            badge_color = '🟢'
+            badge_text = 'High Confidence'
+        elif confidence_level == 'medium':
+            badge_color = '🟡'
+            badge_text = 'Medium Confidence'
+        else:
+            badge_color = '🔴'
+            badge_text = 'Low Confidence'
+
+        # Verification status
+        verified_icon = "✅ Verified" if verified else "⚠️ Unverified"
+
+        # Expander for each fact
+        with st.expander(f"{badge_color} **{claim.replace('_', ' ').title()}** - {badge_text} ({confidence:.0%}) {verified_icon}",
+                        expanded=False):
+
+            # Display value
+            st.markdown(f"**Value:**")
+            if isinstance(value, list):
+                for item in value:
+                    st.markdown(f"• {item}")
+            else:
+                st.markdown(f"{value}")
+
+            st.markdown("---")
+
+            # Confidence details
+            col1, col2 = st.columns([1, 2])
+            with col1:
+                st.markdown(f"**Confidence Score:** {confidence:.0%}")
+                st.markdown(f"**Confidence Level:** {confidence_level.title()}")
+                st.markdown(f"**Verified:** {'Yes' if verified else 'No'}")
+            with col2:
+                if notes:
+                    st.info(f"ℹ️ {notes}")
+
+            # Source attribution
+            if sources:
+                st.markdown("**📚 Sources:**")
+                for sidx, source in enumerate(sources):
+                    source_name = source.get('source_name', 'Unknown')
+                    source_url = source.get('url', '')
+                    source_type = source.get('source_type', 'unknown')
+                    reliability = source.get('reliability_score', 0)
+                    date_accessed = source.get('date_accessed', '')
+
+                    # Format date
+                    try:
+                        from datetime import datetime
+                        date_obj = datetime.fromisoformat(date_accessed)
+                        date_str = date_obj.strftime("%Y-%m-%d %H:%M")
+                    except:
+                        date_str = date_accessed
+
+                    # Source type badge
+                    type_badge = {
+                        'primary': '🔵 Primary',
+                        'secondary': '🟣 Secondary',
+                        'verification': '🟢 Verification'
+                    }.get(source_type, source_type)
+
+                    # Reliability stars
+                    reliability_stars = '⭐' * int(reliability * 5)
+
+                    st.markdown(f"{sidx+1}. **{source_name}** {type_badge}")
+                    st.markdown(f"   - URL: [{source_url}]({source_url})")
+                    st.markdown(f"   - Reliability: {reliability_stars} ({reliability:.0%})")
+                    st.markdown(f"   - Accessed: {date_str}")
+
+            # Conflict warnings
+            if has_conflicts and conflicts:
+                st.markdown("---")
+                st.warning("⚠️ **Conflicting Information Detected**")
+
+                for cidx, conflict in enumerate(conflicts):
+                    st.markdown(f"**Conflict #{cidx+1}:**")
+                    conflicting_values = conflict.get('conflicting_values', [])
+                    conflict_sources = conflict.get('sources', [])
+                    severity = conflict.get('severity', 'unknown')
+
+                    st.markdown(f"**Severity:** {severity.title()}")
+                    st.markdown(f"**Conflicting Values:**")
+                    for cv in conflicting_values:
+                        st.markdown(f"• {cv}")
+
+                    if conflict_sources:
+                        st.markdown(f"**Conflicting Sources:**")
+                        for csource in conflict_sources:
+                            st.markdown(f"• {csource.get('source_name', 'Unknown')} ({csource.get('url', 'No URL')})")
 
 
 def display_results(results: dict, session: dict, session_dir: Path):
@@ -616,6 +795,10 @@ def display_results(results: dict, session: dict, session_dir: Path):
     # Determine which tabs to show
     tab_names = ["📄 Executive Report"]
 
+    # Add Source Verification tab if company intelligence data exists
+    if phase1_data.get('company_intelligence', {}).get('verified_dataset'):
+        tab_names.append("🔍 Source Verification")
+
     if phase1_data.get('business_model_canvas'):
         tab_names.append("🎯 Business Model Canvas")
 
@@ -636,20 +819,26 @@ def display_results(results: dict, session: dict, session_dir: Path):
                 report_content = f.read()
                 st.markdown(report_content)
 
-    # Tab 2: Business Model Canvas (if data exists)
+    # Tab 2: Source Verification (if verified dataset exists)
     tab_index = 1
+    if phase1_data.get('company_intelligence', {}).get('verified_dataset'):
+        with tabs[tab_index]:
+            display_source_verification(phase1_data['company_intelligence']['verified_dataset'])
+        tab_index += 1
+
+    # Tab 3: Business Model Canvas (if data exists)
     if phase1_data.get('business_model_canvas'):
         with tabs[tab_index]:
             display_bmc_visualization(phase1_data, session, session_dir)
         tab_index += 1
 
-    # Tab 3: Value Chain (if data exists)
+    # Tab 4: Value Chain (if data exists)
     if phase1_data.get('value_chain'):
         with tabs[tab_index]:
             display_value_chain_visualization(phase1_data, session, session_dir)
         tab_index += 1
 
-    # Tab 4: Strategic Frameworks (if Phase 2 data exists)
+    # Tab 5: Strategic Frameworks (if Phase 2 data exists)
     if phase2_data:
         with tabs[tab_index]:
             st.subheader("📈 Strategic Analysis")
