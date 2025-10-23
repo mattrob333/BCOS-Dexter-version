@@ -110,3 +110,8 @@ temp/
 # ============================================
 Thumbs.db
 Desktop.ini
+
+# Backup and intermediate files
+*_new.py
+*_old_backup.py
+nul
