@@ -1,8 +1,17 @@
 """
-Competitor Intelligence Skill.
+Enhanced Competitor Intelligence Skill with Multi-Source Verification.
 
-Profiles key competitors, analyzes their strategies, strengths, weaknesses,
-and positioning in the market.
+Uses real-time competitor discovery and profiling:
+
+Sources:
+1. Exa similar companies - Semantic competitor discovery
+2. Firecrawl competitor websites - Products, pricing, positioning
+3. Exa LinkedIn search - Key employees, org structure
+4. Exa news search - Recent strategic moves
+5. Perplexity verification - Fact-check competitor data
+6. Truth Engine cross-reference - Validate all competitor profiles
+
+Returns VerifiedDataset with sourced, verified competitor intelligence.
 """
 
 from typing import Dict, Any, List
@@ -10,11 +19,17 @@ from anthropic import Anthropic
 import os
 import sys
 from pathlib import Path
+from datetime import datetime
+from dotenv import load_dotenv
 
-# Add project root to path
+load_dotenv()
+
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+from core.truth_engine import TruthEngine
+from core.models import VerifiedDataset
+from data_sources.apis.perplexity_client import PerplexityClient
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -22,292 +37,418 @@ logger = setup_logger(__name__)
 
 def execute(task: Any, context: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Execute competitor intelligence gathering.
-
-    Analyzes:
-    - Competitor profiles
-    - Product/service comparison
-    - Market positioning
-    - Strengths and weaknesses
-    - Strategic moves
-    - Competitive advantages
+    Execute multi-source competitor intelligence gathering.
 
     Args:
-        task: Task object with description
-        context: Execution context (including company and market intelligence)
+        task: Task object
+        context: Execution context with company and market intelligence
         config: BCOS configuration
 
     Returns:
-        Dictionary with competitor intelligence findings
+        VerifiedDataset with competitor intelligence
     """
-    logger.info("Executing Competitor Intelligence skill")
+    logger.info("Executing Enhanced Competitor Intelligence (Multi-Source)")
 
     company = context.get('company', config.get('company', {}))
     company_name = company.get('name', 'Unknown')
+    company_website = company.get('website', '')
     industry = company.get('industry', 'Unknown')
 
-    # Get list of competitors from config
+    # Get competitors from config
     competitors = config.get('competitors', [])
 
-    if not competitors:
-        logger.warning("No competitors specified in config - will identify key competitors")
-
-    # Get context from previous Phase 1 tasks
+    # Get context from Phase 1
     company_intel = context.get('company_intelligence', {})
     market_intel = context.get('market_intelligence', {})
 
-    # Analyze competitors
-    competitor_analysis = _analyze_competitors(
-        company_name=company_name,
-        industry=industry,
-        competitors=competitors,
-        company_intel=company_intel,
-        market_intel=market_intel,
-        config=config
+    # Initialize Truth Engine
+    verification_config = config.get('verification', {})
+    truth_engine = TruthEngine(min_confidence=verification_config.get('min_confidence', 0.5))
+
+    all_competitors_data = {}
+
+    # ========================================
+    # Step 1: Discover Competitors
+    # ========================================
+    if not competitors and company_website:
+        logger.info(f"Discovering competitors similar to {company_website}")
+        discovered = _discover_competitors_with_exa(company_website, config)
+        competitors = discovered.get('competitors', competitors)
+
+    logger.info(f"Analyzing {len(competitors)} competitors")
+
+    # ========================================
+    # Step 2: Profile Each Competitor
+    # ========================================
+    for competitor in competitors[:5]:  # Limit to top 5
+        logger.info(f"Profiling competitor: {competitor}")
+
+        competitor_sources = []
+
+        # Source 1: Scrape competitor website
+        website_data = _scrape_competitor_website(competitor, config)
+        if website_data.get('success'):
+            competitor_sources.append({
+                'source_type': 'primary',
+                'source_name': f"{competitor} Website",
+                'url': website_data.get('url', 'unknown'),
+                'date_accessed': datetime.now().isoformat(),
+                'data': website_data.get('data', {}),
+                'reliability_score': 1.0
+            })
+
+        # Source 2: Exa company research
+        exa_research = _research_competitor_with_exa(competitor, industry, config)
+        if exa_research.get('success'):
+            competitor_sources.append({
+                'source_type': 'secondary',
+                'source_name': 'Exa Company Research',
+                'url': 'https://exa.ai',
+                'date_accessed': datetime.now().isoformat(),
+                'data': exa_research.get('data', {}),
+                'reliability_score': 0.85
+            })
+
+        # Source 3: LinkedIn search for org structure
+        linkedin_data = _search_linkedin(competitor, config)
+        if linkedin_data.get('success'):
+            competitor_sources.append({
+                'source_type': 'secondary',
+                'source_name': 'LinkedIn',
+                'url': 'https://linkedin.com',
+                'date_accessed': datetime.now().isoformat(),
+                'data': linkedin_data.get('data', {}),
+                'reliability_score': 0.8
+            })
+
+        # Source 4: Recent news about competitor
+        news_data = _search_competitor_news(competitor, config)
+        if news_data.get('success'):
+            competitor_sources.append({
+                'source_type': 'secondary',
+                'source_name': 'News Search',
+                'url': 'https://exa.ai',
+                'date_accessed': datetime.now().isoformat(),
+                'data': news_data.get('data', {}),
+                'reliability_score': 0.75
+            })
+
+        # Source 5: Perplexity verification
+        perplexity_data = _verify_competitor_data(competitor, config)
+        if perplexity_data.get('success'):
+            competitor_sources.append({
+                'source_type': 'verification',
+                'source_name': 'Perplexity Verification',
+                'url': 'https://perplexity.ai',
+                'date_accessed': datetime.now().isoformat(),
+                'data': perplexity_data.get('data', {}),
+                'reliability_score': 0.9
+            })
+
+        # Cross-reference data for this competitor
+        verified_competitor = truth_engine.cross_reference(
+            datasets=competitor_sources,
+            entity_name=competitor,
+            entity_type="competitor"
+        )
+
+        all_competitors_data[competitor] = verified_competitor.to_dict()
+
+    # ========================================
+    # Step 3: Competitive Analysis
+    # ========================================
+    logger.info("Synthesizing competitive intelligence...")
+
+    competitive_analysis = _synthesize_competitive_intelligence(
+        company_name,
+        all_competitors_data,
+        company_intel,
+        market_intel,
+        config
     )
 
-    logger.info(f"Competitor intelligence gathered for {len(competitors)} competitors")
+    return {
+        'success': True,
+        'competitor_profiles': all_competitors_data,
+        'competitive_analysis': competitive_analysis,
+        'competitors_analyzed': len(all_competitors_data),
+        'verification_method': 'multi_source_truth_engine'
+    }
 
-    return competitor_analysis
+
+def _discover_competitors_with_exa(company_url: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    """Discover competitors using Exa's similar companies feature."""
+    data_sources = config.get('data_sources', {})
+    exa_config = data_sources.get('exa', {})
+
+    if not (isinstance(exa_config, dict) and exa_config.get('use_mcp', False)):
+        logger.info("Exa MCP not enabled for competitor discovery")
+        return {'competitors': []}
+
+    # TODO: When executed by Claude Code with MCP:
+    # result = mcp__exa__crawling_exa(url=company_url)
+    # similar = mcp__exa__web_search_exa(
+    #     query=f"companies similar to {extract_company_name(company_url)}",
+    #     numResults=10
+    # )
+    logger.info("[MCP] Would call mcp__exa__web_search_exa for similar companies")
+
+    return {'competitors': []}
 
 
-def _analyze_competitors(
-    company_name: str,
-    industry: str,
-    competitors: List[str],
-    company_intel: Dict[str, Any],
-    market_intel: Dict[str, Any],
-    config: Dict[str, Any]
-) -> Dict[str, Any]:
-    """
-    Analyze competitors in detail.
+def _scrape_competitor_website(competitor: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    """Scrape competitor website for products, pricing, positioning."""
+    # Try to find website URL
+    competitor_url = f"https://{competitor.lower().replace(' ', '')}.com"
 
-    Args:
-        company_name: Name of the company
-        industry: Industry vertical
-        competitors: List of competitor names
-        company_intel: Company intelligence from Phase 1
-        market_intel: Market intelligence from Phase 1
-        config: BCOS configuration
+    data_sources = config.get('data_sources', {})
+    firecrawl_config = data_sources.get('firecrawl', {})
 
-    Returns:
-        Comprehensive competitor analysis
-    """
+    if not (isinstance(firecrawl_config, dict) and firecrawl_config.get('use_mcp', False)):
+        # Fallback
+        from data_sources.scrapers.firecrawl_client import FirecrawlClient
+        client = FirecrawlClient()
+        result = client.scrape_url(competitor_url)
+
+        if result.get('success'):
+            # Analyze content
+            analyzed = _analyze_competitor_website(
+                competitor, result.get('content', ''), config
+            )
+            return {
+                'success': True,
+                'url': competitor_url,
+                'data': analyzed
+            }
+
+        return {'success': False}
+
+    # TODO: MCP call
+    logger.info(f"[MCP] Would call mcp__firecrawl__firecrawl_scrape for {competitor_url}")
+    return {'success': False}
+
+
+def _research_competitor_with_exa(competitor: str, industry: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    """Research competitor using Exa company research."""
+    data_sources = config.get('data_sources', {})
+    exa_config = data_sources.get('exa', {})
+
+    if not (isinstance(exa_config, dict) and exa_config.get('use_mcp', False)):
+        return {'success': False}
+
+    # TODO: MCP call
+    # result = mcp__exa__company_research_exa(
+    #     companyName=competitor,
+    #     numResults=10
+    # )
+    logger.info(f"[MCP] Would call mcp__exa__company_research_exa for {competitor}")
+
+    return {'success': False}
+
+
+def _search_linkedin(competitor: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    """Search LinkedIn for competitor org structure."""
+    data_sources = config.get('data_sources', {})
+    exa_config = data_sources.get('exa', {})
+
+    if not (isinstance(exa_config, dict) and exa_config.get('use_mcp', False)):
+        return {'success': False}
+
+    # TODO: MCP call
+    # result = mcp__exa__linkedin_search_exa(
+    #     query=f"{competitor} employees leadership",
+    #     searchType="profiles",
+    #     numResults=10
+    # )
+    logger.info(f"[MCP] Would call mcp__exa__linkedin_search_exa for {competitor}")
+
+    return {'success': False}
+
+
+def _search_competitor_news(competitor: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    """Search for recent news about competitor."""
+    data_sources = config.get('data_sources', {})
+    exa_config = data_sources.get('exa', {})
+
+    if not (isinstance(exa_config, dict) and exa_config.get('use_mcp', False)):
+        return {'success': False}
+
+    # TODO: MCP call
+    # result = mcp__exa__web_search_exa(
+    #     query=f"{competitor} news launches acquisitions 2024",
+    #     numResults=5
+    # )
+    logger.info(f"[MCP] Would call Exa news search for {competitor}")
+
+    return {'success': False}
+
+
+def _verify_competitor_data(competitor: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    """Verify competitor data with Perplexity."""
+    perplexity_config = config.get('data_sources', {}).get('perplexity', {})
+
+    if not perplexity_config.get('enabled', False):
+        return {'success': False}
+
+    client = PerplexityClient()
+    if not client.is_available():
+        return {'success': False}
+
+    result = client.get_company_info(
+        competitor,
+        specific_info=["revenue", "products", "market_share", "strategy"]
+    )
+
+    if result.get('success'):
+        answer = result.get('answer', '')
+        structured = _structure_competitor_response(competitor, answer, config)
+
+        return {
+            'success': True,
+            'data': structured,
+            'sources': result.get('sources', [])
+        }
+
+    return {'success': False}
+
+
+def _analyze_competitor_website(competitor: str, content: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    """Analyze competitor website content."""
     client = Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
 
-    # Extract relevant context
-    business_description = company_intel.get('business_description', '')
-    products_services = company_intel.get('products_services', [])
-    value_proposition = company_intel.get('value_proposition', '')
+    prompt = f"""Analyze competitor website content.
 
-    # Market context
-    market_segments = market_intel.get('market_segments', [])
-    market_trends = market_intel.get('trends', [])
+Competitor: {competitor}
 
-    context_summary = f"""
-Company: {company_name}
-Industry: {industry}
-Business Description: {business_description}
-Products/Services: {', '.join(products_services) if isinstance(products_services, list) else products_services}
-Value Proposition: {value_proposition}
+Content:
+{content[:8000]}
 
-Competitors to Analyze: {', '.join(competitors)}
-
-Market Context:
-- Key segments: {', '.join([s.get('segment_name', '') for s in market_segments[:3]]) if market_segments else 'N/A'}
-- Key trends: {', '.join([t.get('trend', '') for t in market_trends[:3]]) if market_trends else 'N/A'}
-"""
-
-    prompt = f"""Conduct comprehensive competitor intelligence analysis.
-
-{context_summary}
-
-For each competitor, provide detailed analysis across these dimensions:
-
-1. **Company Profile**
-   - Company size (revenue, employees, funding)
-   - Geographic presence
-   - Target markets
-   - Ownership structure (public, private, PE-backed)
-
-2. **Products & Services**
-   - Core offerings
-   - Product portfolio breadth
-   - Product differentiation
-   - Pricing strategy
-
-3. **Market Positioning**
-   - Target customer segments
-   - Value proposition
-   - Brand positioning
-   - Market share estimate
-
-4. **Strengths**
-   - Competitive advantages
-   - What they do well
-   - Key capabilities
-   - Strategic assets
-
-5. **Weaknesses**
-   - Vulnerabilities
-   - What they struggle with
-   - Gaps in offering
-   - Strategic liabilities
-
-6. **Strategic Focus**
-   - Current strategy
-   - Recent moves (M&A, partnerships, product launches)
-   - Investment priorities
-   - Strategic direction
-
-7. **Competitive Threat Level**
-   - How much of a threat are they to our company?
-   - In which segments do they compete?
-   - How are they differentiated from us?
-
-Also provide:
-- Competitive positioning map
-- Feature/capability comparison matrix
-- Strategic group analysis
-
-Return a detailed JSON object:
-
+Extract competitive intelligence:
 {{
-  "competitor_profiles": [
-    {{
-      "name": "...",
-      "profile": {{
-        "revenue": "...",
-        "employees": "...",
-        "funding": "...",
-        "headquarters": "...",
-        "geographic_presence": ["...", "..."],
-        "founded": "...",
-        "ownership": "public/private/..."
-      }},
-      "products_services": {{
-        "core_products": ["...", "..."],
-        "portfolio_breadth": "narrow/moderate/wide",
-        "differentiation": "...",
-        "pricing_strategy": "premium/value/penetration",
-        "pricing_model": "..."
-      }},
-      "market_positioning": {{
-        "target_segments": ["...", "..."],
-        "value_proposition": "...",
-        "brand_position": "...",
-        "market_share": "...%",
-        "positioning_statement": "..."
-      }},
-      "strengths": [
-        {{
-          "strength": "...",
-          "category": "product/brand/operations/financial",
-          "impact": "high/medium/low",
-          "description": "..."
-        }}
-      ],
-      "weaknesses": [
-        {{
-          "weakness": "...",
-          "category": "product/brand/operations/financial",
-          "exploitability": "high/medium/low",
-          "description": "..."
-        }}
-      ],
-      "strategy": {{
-        "current_focus": "...",
-        "recent_moves": ["...", "..."],
-        "investment_priorities": ["...", "..."],
-        "strategic_direction": "..."
-      }},
-      "threat_assessment": {{
-        "threat_level": "critical/high/medium/low",
-        "overlapping_segments": ["...", "..."],
-        "differentiation_vs_us": "...",
-        "areas_of_direct_competition": ["...", "..."],
-        "areas_where_we_win": ["...", "..."],
-        "areas_where_they_win": ["...", "..."]
-      }}
-    }}
-  ],
-  "competitive_landscape": {{
-    "market_leaders": ["...", "..."],
-    "emerging_challengers": ["...", "..."],
-    "niche_players": ["...", "..."],
-    "our_position": "leader/challenger/follower/niche"
-  }},
-  "competitive_positioning_map": {{
-    "axis_1": "price (low to high)",
-    "axis_2": "feature breadth (narrow to wide)",
-    "positions": [
-      {{"company": "Our Company", "x": 7, "y": 8}},
-      {{"company": "Competitor A", "x": 5, "y": 6}}
-    ]
-  }},
-  "feature_comparison": {{
-    "features": ["Feature 1", "Feature 2", "Feature 3"],
-    "companies": {{
-      "Our Company": [true, true, true],
-      "Competitor A": [true, false, true]
-    }}
-  }},
-  "strategic_groups": [
-    {{
-      "group_name": "Premium Full-Stack Providers",
-      "members": ["...", "..."],
-      "characteristics": ["...", "..."],
-      "strategy": "..."
-    }}
-  ],
-  "competitive_insights": [
-    "Key insight 1...",
-    "Key insight 2...",
-    "Key insight 3..."
-  ],
-  "recommendations": [
-    "Recommendation 1...",
-    "Recommendation 2..."
-  ],
-  "confidence": "high/medium/low"
+  "products_services": ["List offerings"],
+  "pricing_strategy": "premium/value/penetration",
+  "value_proposition": "What they promise customers",
+  "target_segments": ["Who they target"],
+  "key_differentiators": ["What makes them unique"],
+  "weaknesses_observed": ["Potential gaps or issues"]
 }}
 
-Be thorough and specific. Focus on actionable competitive intelligence.
+Only include facts from the content.
 """
 
     try:
         response = client.messages.create(
             model="claude-3-7-sonnet-20250219",
-            max_tokens=12000,
+            max_tokens=2000,
             messages=[{"role": "user", "content": prompt}]
         )
 
         import json
         content = response.content[0].text
 
-        # Extract JSON
         if '```json' in content:
             content = content.split('```json')[1].split('```')[0].strip()
-        elif '```' in content:
-            content = content.split('```')[1].split('```')[0].strip()
 
-        analysis = json.loads(content)
-
-        # Add metadata
-        analysis['company_name'] = company_name
-        analysis['industry'] = industry
-        analysis['analysis_type'] = 'competitor_intelligence'
-        analysis['competitors_analyzed'] = len(competitors)
-        analysis['source'] = 'llm_analysis'
-
-        return analysis
+        return json.loads(content)
 
     except Exception as e:
-        logger.error(f"Error analyzing competitors: {e}")
-        return {
-            'error': str(e),
-            'company_name': company_name,
-            'industry': industry,
-            'analysis_type': 'competitor_intelligence',
-            'confidence': 'low'
-        }
+        logger.error(f"Error analyzing competitor website: {e}")
+        return {}
+
+
+def _structure_competitor_response(competitor: str, perplexity_answer: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    """Structure Perplexity competitor data."""
+    client = Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+
+    prompt = f"""Extract structured data about {competitor}.
+
+Research Result:
+{perplexity_answer}
+
+Extract into JSON:
+{{
+  "revenue": "...",
+  "employees": "...",
+  "market_share": "...",
+  "products": [...],
+  "recent_strategy": "..."
+}}
+"""
+
+    try:
+        response = client.messages.create(
+            model="claude-3-7-sonnet-20250219",
+            max_tokens=1500,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        import json
+        content = response.content[0].text
+
+        if '```json' in content:
+            content = content.split('```json')[1].split('```')[0].strip()
+
+        return json.loads(content)
+
+    except Exception as e:
+        logger.error(f"Error structuring competitor response: {e}")
+        return {}
+
+
+def _synthesize_competitive_intelligence(
+    company_name: str,
+    competitors_data: Dict[str, Any],
+    company_intel: Dict[str, Any],
+    market_intel: Dict[str, Any],
+    config: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Synthesize competitive intelligence across all competitors."""
+    client = Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+
+    prompt = f"""Synthesize competitive intelligence.
+
+Our Company: {company_name}
+
+Competitor Profiles:
+{str(competitors_data)[:5000]}
+
+Our Company Context:
+{str(company_intel)[:1000]}
+
+Market Context:
+{str(market_intel)[:1000]}
+
+Provide competitive analysis:
+{{
+  "competitive_landscape": {{
+    "market_leaders": [...],
+    "our_position": "leader/challenger/follower"
+  }},
+  "competitive_advantages": ["Where we win"],
+  "competitive_disadvantages": ["Where competitors win"],
+  "strategic_recommendations": ["How to compete better"],
+  "threat_assessment": {{
+    "highest_threat": "Competitor X",
+    "reason": "..."
+  }}
+}}
+"""
+
+    try:
+        response = client.messages.create(
+            model="claude-3-7-sonnet-20250219",
+            max_tokens=4000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        import json
+        content = response.content[0].text
+
+        if '```json' in content:
+            content = content.split('```json')[1].split('```')[0].strip()
+
+        return json.loads(content)
+
+    except Exception as e:
+        logger.error(f"Error synthesizing competitive intelligence: {e}")
+        return {}

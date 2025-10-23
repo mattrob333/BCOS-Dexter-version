@@ -34,11 +34,12 @@ class FirecrawlClient:
         if not self.api_key:
             logger.warning("Firecrawl API key not set - scraping will be limited")
 
-        # Try to import firecrawl
+        # Try to import firecrawl (V2 API)
         try:
             from firecrawl import FirecrawlApp
             self.client = FirecrawlApp(api_key=self.api_key) if self.api_key else None
             self.available = True
+            logger.info("Firecrawl client initialized (V2 API)")
         except ImportError:
             logger.warning("Firecrawl library not installed - install with: pip install firecrawl-py")
             self.client = None
@@ -60,22 +61,37 @@ class FirecrawlClient:
             return self._fallback_scrape(url)
 
         try:
-            logger.info(f"Scraping {url} with Firecrawl")
+            logger.info(f"Scraping {url} with Firecrawl V2 API")
 
             # Default to markdown format
             if formats is None:
                 formats = ['markdown', 'html']
 
-            result = self.client.scrape_url(
-                url,
-                params={'formats': formats}
-            )
+            # V2 API uses scrape() method with formats as direct parameter
+            result = self.client.scrape(url, formats=formats)
+
+            # V2 returns Document object - access attributes directly
+            content = ''
+            metadata = {}
+
+            if hasattr(result, 'markdown') and result.markdown:
+                content = result.markdown
+            elif hasattr(result, 'html') and result.html:
+                content = result.html
+            elif hasattr(result, 'data'):
+                # Fallback to data dict if available
+                data = result.data if isinstance(result.data, dict) else {}
+                content = data.get('markdown', data.get('html', ''))
+                metadata = data.get('metadata', {})
+
+            if hasattr(result, 'metadata') and result.metadata:
+                metadata = result.metadata if isinstance(result.metadata, dict) else {}
 
             return {
                 'success': True,
                 'url': url,
-                'content': result.get('markdown', result.get('html', '')),
-                'metadata': result.get('metadata', {}),
+                'content': content,
+                'metadata': metadata,
                 'source': 'firecrawl'
             }
 

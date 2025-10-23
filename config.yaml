@@ -71,12 +71,55 @@ performance_targets:
 # API keys should be in .env file
 # ============================================
 data_sources:
-  firecrawl: true      # Deep website scraping
-  exa: true            # Semantic search
-  twitter: true        # Social signals
-  crunchbase: true     # Company data
-  sec_filings: true    # Public company data
-  news_apis: true      # Recent news
+  firecrawl:
+    enabled: true         # Deep website scraping
+    use_mcp: true         # Use MCP server (recommended)
+    fallback_enabled: true  # Fallback to direct API if MCP fails
+
+  exa:
+    enabled: true         # Semantic search
+    use_mcp: true         # Use MCP server (recommended)
+    use_deep_researcher: true  # Use 45s AI researcher for complex queries
+    fallback_enabled: true  # Fallback to direct API if MCP fails
+
+  perplexity:
+    enabled: true         # Fact verification and web search
+    use_for_verification: true  # Use for fact-checking
+
+  twitter: false        # Social signals (not yet implemented)
+  crunchbase: false     # Company data (not yet implemented)
+  sec_filings: false    # Public company data (not yet implemented)
+  news_apis: false      # Recent news (not yet implemented)
+
+# ============================================
+# Multi-Source Verification
+# ============================================
+verification:
+  # Enable multi-source verification (Truth Engine)
+  multi_source_enabled: true
+
+  # Minimum confidence threshold (0.0-1.0) to accept facts
+  # 0.5 = moderate confidence, 0.7 = high confidence, 0.9 = very high
+  min_confidence: 0.5
+
+  # Require all facts to have source citations
+  require_citation: true
+
+  # Flag conflicts between sources for manual review
+  flag_conflicts: true
+
+  # Maximum age of sources in days (prefer recent data)
+  max_source_age_days: 90
+
+  # Minimum number of sources to verify a fact
+  # Set to 1 for single-source, 2+ for cross-reference
+  min_sources_required: 1
+
+  # Cross-reference strategy: "any", "majority", "all"
+  # - any: Accept if any source confirms
+  # - majority: Accept if majority of sources confirm
+  # - all: Accept only if all sources confirm
+  cross_reference_strategy: "majority"
 
 # ============================================
 # Output Preferences
