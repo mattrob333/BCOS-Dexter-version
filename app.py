@@ -9,6 +9,7 @@ import yaml
 import json
 from pathlib import Path
 from datetime import datetime
+from typing import List
 import sys
 import re
 
@@ -188,7 +189,9 @@ def update_progress_ui(status: dict, ui_elements: dict):
 
     # Update progress bar
     progress_percent = status.get('progress_percent', 0)
-    ui_elements['bar'].progress(int(progress_percent) / 100)
+    # Clamp progress to max 100% to avoid Streamlit error
+    progress_value = min(int(progress_percent) / 100, 1.0)
+    ui_elements['bar'].progress(progress_value)
 
     # Update time info
     elapsed = status.get('elapsed', 'Calculating...')
@@ -649,9 +652,160 @@ def display_results(results: dict, session: dict, session_dir: Path):
     # Tab 4: Strategic Frameworks (if Phase 2 data exists)
     if phase2_data:
         with tabs[tab_index]:
-            st.subheader("Strategic Analysis")
-            st.info("Interactive framework visualizations coming soon!")
-            st.json(phase2_data)
+            st.subheader("📈 Strategic Analysis")
+
+            # SWOT Analysis
+            if 'swot' in phase2_data:
+                with st.expander("🎯 SWOT Analysis", expanded=True):
+                    swot = phase2_data['swot']
+                    col1, col2 = st.columns(2)
+
+                    with col1:
+                        st.markdown("#### 💪 Strengths")
+                        strengths = swot.get('strengths', [])
+                        if strengths:
+                            for s in strengths[:5]:
+                                strength_text = s.get('strength', 'N/A')
+                                impact = s.get('impact', 'unknown')
+                                st.success(f"**{strength_text}** ({impact} impact)")
+                                if s.get('description'):
+                                    st.caption(s['description'])
+                        else:
+                            st.info("No strengths data available")
+
+                        st.markdown("#### ⚠️ Weaknesses")
+                        weaknesses = swot.get('weaknesses', [])
+                        if weaknesses:
+                            for w in weaknesses[:5]:
+                                weakness_text = w.get('weakness', 'N/A')
+                                severity = w.get('severity', 'unknown')
+                                st.warning(f"**{weakness_text}** ({severity} severity)")
+                                if w.get('description'):
+                                    st.caption(w['description'])
+                        else:
+                            st.info("No weaknesses data available")
+
+                    with col2:
+                        st.markdown("#### 🚀 Opportunities")
+                        opportunities = swot.get('opportunities', [])
+                        if opportunities:
+                            for o in opportunities[:5]:
+                                opp_text = o.get('opportunity', 'N/A')
+                                impact = o.get('potential_impact', 'unknown')
+                                st.info(f"**{opp_text}** ({impact} impact)")
+                                if o.get('description'):
+                                    st.caption(o['description'])
+                        else:
+                            st.info("No opportunities data available")
+
+                        st.markdown("#### ⚡ Threats")
+                        threats = swot.get('threats', [])
+                        if threats:
+                            for t in threats[:5]:
+                                threat_text = t.get('threat', 'N/A')
+                                severity = t.get('severity', 'unknown')
+                                st.error(f"**{threat_text}** ({severity} severity)")
+                                if t.get('description'):
+                                    st.caption(t['description'])
+                        else:
+                            st.info("No threats data available")
+
+                    # Strategic Implications
+                    if swot.get('strategic_implications'):
+                        st.markdown("---")
+                        st.markdown("#### 💡 Strategic Implications")
+                        for impl in swot['strategic_implications'][:3]:
+                            st.markdown(f"• {impl}")
+
+            # Porter's Five Forces
+            if 'porters_five_forces' in phase2_data:
+                with st.expander("⚡ Porter's Five Forces", expanded=True):
+                    forces = phase2_data['porters_five_forces']
+
+                    # Overall assessment
+                    if 'overall_assessment' in forces:
+                        assessment = forces['overall_assessment']
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Industry Attractiveness",
+                                     assessment.get('industry_attractiveness', 'Unknown').replace('-', ' ').title())
+                        with col2:
+                            st.metric("Attractiveness Score",
+                                     f"{assessment.get('attractiveness_score', 'N/A')}/10")
+                        with col3:
+                            st.metric("Strongest Force",
+                                     assessment.get('strongest_force', 'Unknown').replace('_', ' ').title())
+
+                        if assessment.get('profit_potential'):
+                            st.info(f"**Profit Potential:** {assessment['profit_potential']}")
+                        st.markdown("---")
+
+                    # Individual forces
+                    force_configs = [
+                        ('competitive_rivalry', 'Competitive Rivalry', '🔥'),
+                        ('threat_of_new_entrants', 'Threat of New Entrants', '🚪'),
+                        ('supplier_power', 'Supplier Power', '🏭'),
+                        ('buyer_power', 'Buyer Power', '🛒'),
+                        ('threat_of_substitutes', 'Threat of Substitutes', '🔄')
+                    ]
+
+                    for key, name, emoji in force_configs:
+                        if key in forces:
+                            force = forces[key]
+                            intensity = force.get('intensity', 'unknown').upper()
+                            trend = force.get('trend', 'unknown')
+
+                            st.markdown(f"#### {emoji} {name}")
+                            st.markdown(f"**Intensity:** {intensity} • **Trend:** {trend}")
+
+                            if force.get('impact_on_industry'):
+                                st.markdown(force['impact_on_industry'])
+
+                            if force.get('key_factors'):
+                                with st.expander("View key factors"):
+                                    for factor in force['key_factors'][:5]:
+                                        st.markdown(f"• {factor}")
+                            st.markdown("")
+
+            # PESTEL Analysis
+            if 'pestel' in phase2_data:
+                with st.expander("🌍 PESTEL Analysis", expanded=True):
+                    pestel = phase2_data['pestel']
+
+                    categories = [
+                        ('political', 'Political', '🏛️'),
+                        ('economic', 'Economic', '💰'),
+                        ('social', 'Social', '👥'),
+                        ('technological', 'Technological', '💻'),
+                        ('environmental', 'Environmental', '🌱'),
+                        ('legal', 'Legal', '⚖️')
+                    ]
+
+                    for key, name, emoji in categories:
+                        if key in pestel:
+                            st.markdown(f"#### {emoji} {name}")
+                            category_data = pestel[key]
+
+                            if isinstance(category_data, dict):
+                                if category_data.get('factors'):
+                                    for factor in category_data['factors'][:3]:
+                                        st.markdown(f"• {factor}")
+                                elif category_data.get('description'):
+                                    st.markdown(category_data['description'])
+                            elif isinstance(category_data, list):
+                                for item in category_data[:3]:
+                                    st.markdown(f"• {item}")
+                            st.markdown("")
+
+            # Show raw JSON for any other frameworks
+            other_frameworks = {k: v for k, v in phase2_data.items()
+                               if k not in ['swot', 'porters_five_forces', 'pestel']}
+            if other_frameworks:
+                with st.expander("📊 Other Framework Data", expanded=False):
+                    st.json(other_frameworks)
+
+    # Framework Selector (only for Business Overview without Phase 2)
+    render_framework_selector(session, session_dir, results)
 
 
 def display_bmc_visualization(phase1_data: dict, session: dict, session_dir: Path):
@@ -810,6 +964,305 @@ def display_value_chain_visualization(phase1_data: dict, session: dict, session_
                 st.error(f"Export failed: {str(e)}")
 
 
+def render_framework_selector(session: dict, session_dir: Path, results: dict) -> bool:
+    """
+    Render framework selector UI for running Phase 2 frameworks.
+
+    Args:
+        session: Session metadata
+        session_dir: Path to session directory
+        results: Analysis results
+
+    Returns:
+        True if frameworks were executed, False otherwise
+    """
+    # Check if this is a Business Overview (Phase 1 only)
+    analysis_type = results.get('analysis_type', 'full')
+    phase2_data = results.get('phase2', {})
+
+    # Only show if it's a Business Overview without Phase 2
+    if analysis_type != 'business_overview' or phase2_data:
+        return False
+
+    st.markdown("---")
+    st.subheader("🚀 Run Strategic Frameworks")
+    st.info("Apply professional strategy frameworks to this Business Overview analysis")
+
+    # Framework descriptions
+    framework_info = {
+        'SWOT Analysis': {
+            'description': 'Identify Strengths, Weaknesses, Opportunities, and Threats',
+            'duration': '~5-7 minutes',
+            'icon': '💪'
+        },
+        "Porter's Five Forces": {
+            'description': 'Assess industry competitive dynamics and attractiveness',
+            'duration': '~6-8 minutes',
+            'icon': '⚖️'
+        },
+        'PESTEL Analysis': {
+            'description': 'Evaluate macro-environmental factors (Political, Economic, Social, Technological, Environmental, Legal)',
+            'duration': '~5-7 minutes',
+            'icon': '🌍'
+        },
+        'BCG Matrix': {
+            'description': 'Portfolio analysis (Coming Soon)',
+            'duration': 'N/A',
+            'icon': '📊',
+            'disabled': True
+        }
+    }
+
+    # Framework selection
+    st.markdown("### Select Frameworks to Run")
+
+    selected_frameworks = []
+    cols = st.columns(2)
+
+    for idx, (framework, info) in enumerate(framework_info.items()):
+        with cols[idx % 2]:
+            disabled = info.get('disabled', False)
+            if st.checkbox(
+                f"{info['icon']} {framework}",
+                key=f"fw_{framework}",
+                disabled=disabled,
+                help=f"{info['description']} • Est. time: {info['duration']}"
+            ):
+                if not disabled:
+                    selected_frameworks.append(framework)
+
+            if not disabled:
+                st.caption(info['description'])
+            else:
+                st.caption(f"{info['description']} ⚠️")
+
+    # Run button
+    if selected_frameworks:
+        st.markdown(f"**Selected:** {', '.join(selected_frameworks)}")
+
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            run_button = st.button(
+                "▶️ Run Selected Frameworks",
+                type="primary",
+                use_container_width=True
+            )
+
+        if run_button:
+            # Execute frameworks
+            return execute_frameworks_on_session(
+                session=session,
+                session_dir=session_dir,
+                base_results=results,
+                frameworks=selected_frameworks
+            )
+    else:
+        st.warning("⚠️ Please select at least one framework to run")
+
+    return False
+
+
+def execute_frameworks_on_session(
+    session: dict,
+    session_dir: Path,
+    base_results: dict,
+    frameworks: List[str]
+) -> bool:
+    """
+    Execute selected frameworks on an existing Business Overview analysis.
+
+    Args:
+        session: Session metadata
+        session_dir: Session directory path
+        base_results: Existing Phase 1 results
+        frameworks: List of framework names to run
+
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        st.info(f"🔄 Running {len(frameworks)} framework(s) on existing analysis...")
+
+        # Build framework config
+        company_name = session.get('company_name', 'Company')
+        company_slug = session['company_slug']
+        session_id = session['session_id']
+
+        # Read existing config or create new one
+        json_file = session_dir / "analysis.json"
+        if json_file.exists():
+            with open(json_file, 'r') as f:
+                full_results = json.load(f)
+        else:
+            full_results = base_results
+
+        # Build config for framework execution
+        config = {
+            'company': full_results.get('company_info', {
+                'name': company_name,
+                'website': session.get('company_website', ''),
+                'industry': session.get('industry', '')
+            }),
+            'goals': {
+                'primary': f"Strategic framework analysis for {company_name}",
+                'secondary': []
+            },
+            'scope': {
+                'phase1_depth': 'comprehensive',
+                'phase2_frameworks': frameworks
+            },
+            'competitors': full_results.get('competitors', []),
+            'analysis_mode': 'frameworks',  # Only run Phase 2
+            'run_business_overview': False,  # Don't re-run Phase 1
+            'advanced': {
+                'debug': False,
+                'max_steps': 50,
+                'max_steps_per_task': 10
+            }
+        }
+
+        # Create progress tracker
+        progress_container = st.container()
+
+        with progress_container:
+            # Show progress UI
+            ui_elements = create_progress_display()
+            # Better estimate: frameworks can have 3-5 tasks each
+            total_tasks = len(frameworks) * 5  # Conservative estimate to avoid exceeding 100%
+
+            def on_progress_update(status: dict):
+                update_progress_ui(status, ui_elements)
+
+            tracker = ProgressTracker(total_tasks, callback=on_progress_update)
+
+            # Initialize orchestrator with existing Phase 1 context
+            orchestrator = BusinessContextOrchestrator(config, progress_callback=tracker.emit)
+
+            # Load Phase 1 state
+            orchestrator.state.phase1_context = full_results.get('phase1', {})
+
+            # Run Phase 2 only
+            phase2_results = orchestrator.run_phase2()
+
+            # Check for task failures
+            failed_tasks = [
+                task for task in orchestrator.state.tasks
+                if task.phase == 'phase2' and task.status == 'failed'
+            ]
+
+            if failed_tasks:
+                st.warning(f"⚠️ {len(failed_tasks)} framework task(s) failed validation:")
+                for task in failed_tasks:
+                    st.error(f"• {task.description}")
+                st.info("📊 Continuing with partial results. Some framework sections may be incomplete.")
+
+            # Merge results
+            full_results['phase2'] = phase2_results
+            full_results['analysis_type'] = 'full'  # Now it's a full analysis
+            full_results['summary']['current_phase'] = 'Phase 2: Strategy Complete'
+
+            # Save updated results
+            with open(json_file, 'w') as f:
+                json.dump(full_results, f, indent=2, default=str)
+
+            # Save state after Phase 2
+            state_file = session_dir / "state.json"
+            orchestrator.save_state(str(state_file))
+
+            # Regenerate report with Phase 2
+            md_file = session_dir / "report.md"
+            generate_markdown_report(full_results, str(md_file))
+
+            # Update session
+            session_manager = st.session_state.session_manager
+            session_manager.update_session(session_id, company_slug, {
+                'frameworks_added': frameworks,
+                'updated_at': datetime.now().isoformat()
+            })
+
+            st.success(f"✅ Successfully added {len(frameworks)} framework(s) to analysis!")
+            st.balloons()
+
+            # Refresh page to show new results
+            st.rerun()
+
+            return True
+
+    except Exception as e:
+        st.error(f"❌ Error running frameworks: {str(e)}")
+        return False
+
+
+def render_framework_selector_modal(session: dict, session_dir: Path, results: dict) -> bool:
+    """
+    Render framework selector in a modal/expander for Past Analyses page.
+
+    Args:
+        session: Session metadata
+        session_dir: Path to session directory
+        results: Analysis results
+
+    Returns:
+        True if frameworks were executed, False otherwise
+    """
+    st.info("Select frameworks to apply to this Business Overview analysis")
+
+    # Framework descriptions (same as main selector)
+    framework_info = {
+        'SWOT Analysis': {
+            'description': 'Identify Strengths, Weaknesses, Opportunities, and Threats',
+            'duration': '~5-7 minutes',
+            'icon': '💪'
+        },
+        "Porter's Five Forces": {
+            'description': 'Assess industry competitive dynamics',
+            'duration': '~6-8 minutes',
+            'icon': '⚖️'
+        },
+        'PESTEL Analysis': {
+            'description': 'Evaluate macro-environmental factors',
+            'duration': '~5-7 minutes',
+            'icon': '🌍'
+        }
+    }
+
+    # Framework selection
+    selected_frameworks = []
+
+    for framework, info in framework_info.items():
+        if st.checkbox(
+            f"{info['icon']} {framework}",
+            key=f"modal_fw_{session['session_id']}_{framework}",
+            help=f"{info['description']} • Est. time: {info['duration']}"
+        ):
+            selected_frameworks.append(framework)
+        st.caption(info['description'])
+
+    # Action buttons
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("▶️ Run Selected", type="primary", disabled=not selected_frameworks, use_container_width=True):
+            if selected_frameworks:
+                return execute_frameworks_on_session(
+                    session=session,
+                    session_dir=session_dir,
+                    base_results=results,
+                    frameworks=selected_frameworks
+                )
+
+    with col2:
+        if st.button("Cancel", use_container_width=True):
+            st.session_state.show_framework_modal = False
+            st.session_state.adding_frameworks_to = None
+            st.rerun()
+
+    if not selected_frameworks:
+        st.warning("⚠️ Select at least one framework")
+
+    return False
+
+
 def past_analyses_page():
     """Page showing past analyses."""
     st.header("📚 Past Analyses")
@@ -835,7 +1288,7 @@ def past_analyses_page():
     for company_slug, company_sessions in companies.items():
         with st.expander(f"**{company_sessions[0]['company_name']}** ({len(company_sessions)} analyses)"):
             for session in sorted(company_sessions, key=lambda x: x['created_at'], reverse=True):
-                col1, col2, col3, col4 = st.columns([3, 2, 2, 2])
+                col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 2, 2])
 
                 with col1:
                     st.markdown(f"**Session:** `{session['session_id']}`")
@@ -856,11 +1309,42 @@ def past_analyses_page():
                         md_file = session_dir / "report.md"
 
                         if md_file.exists():
-                            if st.button("View Report", key=f"view_{session['session_id']}"):
+                            if st.button("👁️ View", key=f"view_{session['session_id']}", use_container_width=True):
                                 st.session_state.viewing_session = session
                                 with open(md_file, 'r') as f:
                                     st.markdown("---")
                                     st.markdown(f.read())
+
+                with col5:
+                    if session.get('status') == 'completed':
+                        # Check if this is a Business Overview (can add frameworks)
+                        json_file = Path(session['output_dir']) / "analysis.json"
+                        if json_file.exists():
+                            with open(json_file, 'r') as f:
+                                results = json.load(f)
+                                analysis_type = results.get('analysis_type', 'full')
+                                phase2_data = results.get('phase2', {})
+
+                                # Show "+ Frameworks" button if it's Business Overview without Phase 2
+                                if analysis_type == 'business_overview' and not phase2_data:
+                                    if st.button("➕ Frameworks", key=f"add_fw_{session['session_id']}", use_container_width=True):
+                                        st.session_state.adding_frameworks_to = session['session_id']
+                                        st.session_state.show_framework_modal = True
+                                        st.rerun()
+
+                # Show framework selector modal if triggered
+                if st.session_state.get('show_framework_modal') and st.session_state.get('adding_frameworks_to') == session['session_id']:
+                    with st.expander("🎯 Add Strategic Frameworks", expanded=True):
+                        json_file = Path(session['output_dir']) / "analysis.json"
+                        if json_file.exists():
+                            with open(json_file, 'r') as f:
+                                results = json.load(f)
+
+                            # Render framework selector
+                            session_dir = Path(session['output_dir'])
+                            if render_framework_selector_modal(session, session_dir, results):
+                                st.session_state.show_framework_modal = False
+                                st.session_state.adding_frameworks_to = None
 
 
 def about_page():

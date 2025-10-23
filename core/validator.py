@@ -176,15 +176,20 @@ Respond with ONLY a JSON object:
             # Fallback to heuristic validation
             return self._heuristic_validate(task, result)
 
-    def _summarize_result(self, result: Dict[str, Any], max_length: int = 500) -> str:
+    def _summarize_result(self, result: Dict[str, Any], max_length: int = 2000) -> str:
         """Create a brief summary of task result for validation."""
         import json
 
         result_str = json.dumps(result, indent=2)
 
         if len(result_str) > max_length:
-            # Truncate but keep structure visible
-            return result_str[:max_length] + "\n... (truncated)"
+            # Try to truncate at a clean JSON boundary
+            truncated = result_str[:max_length]
+            # Find last complete JSON object/array
+            last_brace = max(truncated.rfind('},'), truncated.rfind('],'))
+            if last_brace > max_length * 0.7:  # If we're not losing too much
+                truncated = result_str[:last_brace + 2]
+            return truncated + "\n... (truncated)"
 
         return result_str
 
