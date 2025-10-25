@@ -13,15 +13,25 @@ Welcome! This guide will help you set up and run your first business analysis wi
 ✅ **Data Sources**:
 - Firecrawl client (with fallback to requests/BeautifulSoup)
 
-✅ **Phase 1 Skills** (Foundation Building):
+✅ **Phase 1 Skills** (Foundation Building - 6 Skills):
 - **Company Intelligence** - Scrapes website, extracts business info
 - **Business Model Canvas** - Analyzes business model across 9 building blocks
 - **Market Intelligence** - TAM/SAM/SOM, trends, opportunities, competitive dynamics
 - **Competitor Intelligence** - Profiles competitors, positioning, threat assessment
+- **Value Chain Mapper** - Porter's Value Chain analysis (primary & support activities)
+- **Org Structure Analyzer** - Leadership, structure, decision-making, organizational health
 
-✅ **Phase 2 Skills** (Strategy Analysis):
+✅ **Phase 2 Skills** (Strategy Analysis - 10 Skills):
 - **SWOT Analysis** - Strengths, weaknesses, opportunities, threats + TOWS matrix + prioritization
 - **Porter's Five Forces** - Industry attractiveness across all 5 competitive forces
+- **PESTEL Analysis** - Macro-environmental analysis (Political, Economic, Social, Tech, Environmental, Legal)
+- **BCG Matrix** - Portfolio analysis (Stars, Cash Cows, Question Marks, Dogs)
+- **Ansoff Matrix** - Growth strategies (Market Penetration, Development, Product Dev, Diversification)
+- **Value Proposition Canvas** - Product-market fit analysis (Customer jobs, pains, gains)
+- **McKinsey 7S Framework** - Organizational effectiveness (Strategy, Structure, Systems, Values, Style, Staff, Skills)
+- **Functional Strategy** - Department-level strategies (Sales, Marketing, Product, Ops, Finance, HR, IT)
+- **Competitive Strategy** - Positioning, differentiation, competitive advantages (moats)
+- **Sales Intelligence** - ICP, account targeting, sales playbooks, battlecards, messaging
 
 ✅ **Report Generation**:
 - Professional markdown reports with executive summary
@@ -93,14 +103,24 @@ python main.py
 When you run BCOS, it will:
 
 1. **Initialize**: Load config, set up orchestrator
-2. **Phase 1 - Foundation Building**:
+2. **Phase 1 - Foundation Building** (6 skills):
    - Gather company intelligence (scrape website, analyze business)
    - Build Business Model Canvas (9 building blocks)
    - Research market landscape (size, growth, trends, opportunities)
    - Profile competitors (positioning, strengths, weaknesses, threats)
-3. **Phase 2 - Strategy Analysis**:
-   - Conduct SWOT analysis (+ TOWS matrix and strategic implications)
-   - Analyze Porter's Five Forces (industry attractiveness assessment)
+   - Map value chain (primary & support activities)
+   - Analyze organizational structure (leadership, decision-making, culture)
+3. **Phase 2 - Strategy Analysis** (10 frameworks):
+   - SWOT Analysis (+ TOWS matrix and strategic implications)
+   - Porter's Five Forces (industry attractiveness assessment)
+   - PESTEL Analysis (macro-environmental factors)
+   - BCG Matrix (portfolio analysis)
+   - Ansoff Matrix (growth strategies)
+   - Value Proposition Canvas (product-market fit)
+   - McKinsey 7S (organizational effectiveness)
+   - Functional Strategy (department-level strategies)
+   - Competitive Strategy (positioning & moats)
+   - Sales Intelligence (playbooks & battlecards)
 4. **Generate Reports**: Create markdown report and save JSON data
 5. **Save State**: Persist state for potential recovery
 
@@ -250,12 +270,12 @@ The `analysis_*.json` file contains complete structured data:
 
 ### Coming Soon 🔜
 
-- More Phase 1 skills (Value Chain, Org Structure)
-- More Phase 2 skills (BCG Matrix, Blue Ocean, PESTEL)
-- Additional data sources (Exa, Crunchbase, News APIs)
+- Additional data sources (Exa for semantic search, Crunchbase, News APIs)
 - PDF/DOCX/PPTX report generation
-- Sales intelligence & playbooks
+- Additional strategy frameworks (Blue Ocean Strategy, Scenario Planning)
 - Automated OKR/KPI recommendations
+- Web UI for interactive analysis
+- V2: AI Opportunity Assessment (12-agent system for identifying AI automation opportunities)
 
 ## Testing the System
 
@@ -405,11 +425,14 @@ By running BCOS, you'll:
 2. ✅ Understand the business model in depth
 3. ✅ Map the market landscape and opportunities
 4. ✅ Profile key competitors
-5. ✅ Conduct professional SWOT analysis
-6. ✅ Assess industry attractiveness (Porter's)
-7. ✅ Generate executive-quality reports
+5. ✅ Analyze value chain and organizational structure
+6. ✅ Apply 10 strategic frameworks (SWOT, Porter's 5 Forces, PESTEL, BCG Matrix, Ansoff, VPC, McKinsey 7S, etc.)
+7. ✅ Develop functional strategies for each department
+8. ✅ Create competitive positioning and moat analysis
+9. ✅ Generate sales playbooks and battlecards
+10. ✅ Produce executive-quality reports with actionable recommendations
 
-All in under 5 minutes with a single command!
+All with a single command, delivering McKinsey-level analysis!
 
 ## Real-World Use Cases
 
@@ -431,4 +454,4 @@ All in under 5 minutes with a single command!
 
 **Happy Analyzing! 🚀**
 
-The system is production-ready with 6 implemented skills covering the most important business analysis frameworks. You can run meaningful analyses right now!
+The system is production-ready with **16 implemented skills** covering the most important business analysis frameworks including Porter's Value Chain, BCG Matrix, Ansoff Matrix, Value Proposition Canvas, McKinsey 7S, Functional Strategy, Competitive Strategy, and Sales Intelligence. You can run comprehensive McKinsey-level analyses right now!

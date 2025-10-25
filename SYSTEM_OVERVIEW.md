@@ -45,18 +45,27 @@ A **production-ready, autonomous business intelligence system** with a web inter
 - ✅ Loop detection and safety limits
 - ✅ Session management for output isolation
 
-**Skills Implemented** (7 total):
+**Skills Implemented** (16 total):
 
-**Phase 1 - Foundation Building** (4 skills):
+**Phase 1 - Foundation Building** (6 skills):
 1. **Company Intelligence** - Website scraping + LLM analysis
 2. **Business Model Canvas** - All 9 building blocks
 3. **Market Intelligence** - TAM/SAM/SOM, trends, opportunities
 4. **Competitor Intelligence** - Multi-competitor profiling
+5. **Value Chain Mapper** - Porter's Value Chain (primary & support activities)
+6. **Org Structure Analyzer** - Leadership, structure, decision-making, culture
 
-**Phase 2 - Strategy Analysis** (3 skills):
-5. **SWOT Analysis** - Full SWOT + TOWS matrix + prioritization
-6. **Porter's Five Forces** - Industry attractiveness (all 5 forces)
-7. **PESTEL Analysis** - Macro-environmental factors (6 dimensions)
+**Phase 2 - Strategy Analysis** (10 skills):
+7. **SWOT Analysis** - Full SWOT + TOWS matrix + prioritization
+8. **Porter's Five Forces** - Industry attractiveness (all 5 forces)
+9. **PESTEL Analysis** - Macro-environmental factors (6 dimensions)
+10. **BCG Matrix** - Portfolio analysis (Stars, Cash Cows, Question Marks, Dogs)
+11. **Ansoff Matrix** - Growth strategies (Market Penetration, Development, Product Dev, Diversification)
+12. **Value Proposition Canvas** - Product-market fit (Customer jobs, pains, gains)
+13. **McKinsey 7S Framework** - Organizational effectiveness (7 interconnected elements)
+14. **Functional Strategy** - Department strategies (Sales, Marketing, Product, Ops, Finance, HR, IT)
+15. **Competitive Strategy** - Positioning, differentiation, sustainable advantages (moats)
+16. **Sales Intelligence** - ICP, account targeting, playbooks, battlecards, messaging
 
 **Data Sources**:
 - ✅ Firecrawl API (deep web scraping)
